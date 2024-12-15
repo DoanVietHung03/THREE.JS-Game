@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
@@ -11,12 +11,12 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(window.innerWidth - 10, window.innerHeight - 10);
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 
 // Bầu trời ban ngày
-scene.background = new THREE.Color(0x87CEEB);
+scene.background = new THREE.Color(0x87ceeb);
 
 // Ánh sáng môi trường
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -29,7 +29,7 @@ scene.add(directionalLight);
 
 //Cát
 const loader = new THREE.TextureLoader();
-const sandTexture  = loader.load('texture/sand.jpg'); // Đường dẫn tới texture cát
+const sandTexture = loader.load("texture/sand.jpg"); // Đường dẫn tới texture cát
 sandTexture.wrapS = THREE.RepeatWrapping; // Lặp texture theo trục S (ngang)
 sandTexture.wrapT = THREE.RepeatWrapping; // Lặp texture theo trục T (dọc)
 sandTexture.repeat.set(50, 50); // Số lần lặp texture trên mặt đất
@@ -37,15 +37,15 @@ sandTexture.repeat.set(50, 50); // Số lần lặp texture trên mặt đất
 // 3. Tạo mặt phẳng mặt đất với texture
 const groundGeometry = new THREE.PlaneGeometry(10000, 10000); // Kích thước mặt đất
 const groundMaterial = new THREE.MeshStandardMaterial({
-  map: sandTexture,  // Texture được áp dụng
-  roughness: 1,      // Độ nhám để làm cát không bóng
-  metalness: 0,      // Tắt phản chiếu kim loại
+  map: sandTexture, // Texture được áp dụng
+  roughness: 1, // Độ nhám để làm cát không bóng
+  metalness: 0, // Tắt phản chiếu kim loại
 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 
 // 4. Xoay và đặt mặt phẳng
 ground.rotation.x = -Math.PI / 2; // Nằm ngang
-ground.position.y = -0.5;         // Vị trí mặt đất
+ground.position.y = -0.5; // Vị trí mặt đất
 
 // 5. Thêm vào scene
 scene.add(ground);
@@ -153,7 +153,15 @@ const obstacleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 generateObjects(coins, coinGeometry, coinMaterial, 30, -485, 490, "coin");
 
 // Chướng ngại vật
-generateObjects(obstacles, obstacleGeometry, obstacleMaterial, 50, -485, 490, "obstacle");
+generateObjects(
+  obstacles,
+  obstacleGeometry,
+  obstacleMaterial,
+  50,
+  -485,
+  490,
+  "obstacle"
+);
 
 // Camera cố định trục X, giữ nguyên vị trí trục Z
 camera.position.set(0, 3, 5);
@@ -203,16 +211,18 @@ function checkCollision(object1, object2) {
 const lanes = [-3.75, 0, 3.75]; // Các vị trí x của làn
 let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: phải)
 
-function movePlayer() {
-  model.position.x = lanes[currentLane];
+function movePlayer(moveSpeed) {
+  model.position.x += moveSpeed;
 }
 
 let playerAttribute = {
   velocity: 0, // Vận tốc ban đầu (0 khi đứng yên)
   isJumping: false, // Trạng thái nhảy
+  isMovingLeft: false,
+  isMovingRight: false,
+
   gravity: -0.003, // Gia tốc trọng trường (âm vì vật rơi xuống)
-  jumpStrength: 0.15, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
-  jumpHeight: 3, // Chiều cao nhảy tối đa
+  moveSpeed: 0.25, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
 };
 
 // Vòng lặp render và cập nhật animation
@@ -245,20 +255,38 @@ function animate() {
     }
 
     // Điều khiển nhân vật
-    if (keys.left && currentLane > 0) {
-      currentLane--;
-      movePlayer();
-      keys.left = false; // Tránh di chuyển liên tục
+    if (keys.left) {
+      if (!playerAttribute.isMovingLeft && currentLane > 0) {
+        currentLane--;
+        playerAttribute.isMovingLeft = true;
+      }
     }
-    if (keys.right && currentLane < lanes.length - 1) {
-      currentLane++;
-      movePlayer();
-      keys.right = false; // Tránh di chuyển liên tục
+    if (playerAttribute.isMovingLeft) {
+      movePlayer(-playerAttribute.moveSpeed);
+      if (model.position.x < lanes[currentLane]) {
+        model.position.x = lanes[currentLane];
+        playerAttribute.isMovingLeft = false;
+        keys.left = false;
+      }
+    }
+    if (keys.right) {
+      if (!playerAttribute.isMovingRight && currentLane < lanes.length - 1) {
+        currentLane++;
+        playerAttribute.isMovingRight = true;
+      }
+    }
+    if (playerAttribute.isMovingRight) {
+      movePlayer(playerAttribute.moveSpeed);
+      if (model.position.x > lanes[currentLane]) {
+        model.position.x = lanes[currentLane];
+        playerAttribute.isMovingRight = false;
+        keys.right = false;
+      }
     }
 
     if (keys.up && !playerAttribute.isJumping && model.position.y === 0) {
       playerAttribute.isJumping = true; // Đánh dấu là đang nhảy
-      playerAttribute.velocity = playerAttribute.jumpStrength; // Đặt vận tốc ban đầu khi nhảy
+      playerAttribute.velocity = playerAttribute.moveSpeed; // Đặt vận tốc ban đầu khi nhảy
     }
 
     if (playerAttribute.isJumping) {
