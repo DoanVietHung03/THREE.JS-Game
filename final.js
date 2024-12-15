@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-//import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
-  80,
+  100,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
@@ -13,18 +13,44 @@ const camera = new THREE.PerspectiveCamera(
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
 
-scene.background = new THREE.Color(0x87ceeb);
+// Bầu trời ban ngày
+scene.background = new THREE.Color(0x87CEEB);
 
-// Ánh sáng
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+// Ánh sáng môi trường
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
+// Ánh sáng định hướng
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(0, 10, 10);
 scene.add(directionalLight);
 
-// Sàn đường ray
+//Cát
+const loader = new THREE.TextureLoader();
+const sandTexture  = loader.load('texture/sand.jpg'); // Đường dẫn tới texture cát
+sandTexture.wrapS = THREE.RepeatWrapping; // Lặp texture theo trục S (ngang)
+sandTexture.wrapT = THREE.RepeatWrapping; // Lặp texture theo trục T (dọc)
+sandTexture.repeat.set(50, 50); // Số lần lặp texture trên mặt đất
+
+// 3. Tạo mặt phẳng mặt đất với texture
+const groundGeometry = new THREE.PlaneGeometry(10000, 10000); // Kích thước mặt đất
+const groundMaterial = new THREE.MeshStandardMaterial({
+  map: sandTexture,  // Texture được áp dụng
+  roughness: 1,      // Độ nhám để làm cát không bóng
+  metalness: 0,      // Tắt phản chiếu kim loại
+});
+const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+
+// 4. Xoay và đặt mặt phẳng
+ground.rotation.x = -Math.PI / 2; // Nằm ngang
+ground.position.y = -0.5;         // Vị trí mặt đất
+
+// 5. Thêm vào scene
+scene.add(ground);
+
+// Sàn đường
 const planeGeometry = new THREE.PlaneGeometry(10, 1000);
 const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
 const plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -50,14 +76,14 @@ for (let i = -2.5; i <= 2.5; i += 2.5) {
 // Tải mô hình .glb
 let model = new THREE.Object3D();
 let mixer; // AnimationMixer
-const loader = new GLTFLoader();
-loader.load(
+const model_loader = new GLTFLoader();
+model_loader.load(
   "/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
   (gltf) => {
     model.add(gltf.scene);
     console.log("Model loaded:", model);
-    model.position.set(0, 0, 500);
-    model.scale.set(0.5, 0.5, 0.5);
+    model.position.set(0, 0, 495);
+    model.scale.set(0.7, 0.7, 0.7);
     scene.add(model);
 
     mixer = new THREE.AnimationMixer(model);
@@ -124,18 +150,10 @@ const obstacleGeometry = new THREE.BoxGeometry(1, 1, 1);
 const obstacleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
 // Tiền vàng
-generateObjects(coins, coinGeometry, coinMaterial, 30, -495, 490, "coin");
+generateObjects(coins, coinGeometry, coinMaterial, 30, -485, 490, "coin");
 
 // Chướng ngại vật
-generateObjects(
-  obstacles,
-  obstacleGeometry,
-  obstacleMaterial,
-  30,
-  -495,
-  490,
-  "obstacle"
-);
+generateObjects(obstacles, obstacleGeometry, obstacleMaterial, 50, -485, 490, "obstacle");
 
 // Camera cố định trục X, giữ nguyên vị trí trục Z
 camera.position.set(0, 3, 5);
