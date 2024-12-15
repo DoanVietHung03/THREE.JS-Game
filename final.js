@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
@@ -100,7 +102,24 @@ model_loader.load(
     console.error("An error occurred while loading the model:", error);
   }
 );
-console.log(`model ${model}`);
+
+const text_loader = new FontLoader();
+text_loader.load(
+  "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+  function (font) {
+    const textGeometry = new TextGeometry("ready!", {
+      font: font,
+      size: 1,
+      height: 0.2,
+    });
+    const textMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+    });
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(0, 10, 480);
+    scene.add(textMesh);
+  }
+);
 
 // Hàm tạo ngẫu nhiên vị trí các vật thể
 function generateObjects(
@@ -222,7 +241,7 @@ let playerAttribute = {
   isMovingRight: false,
 
   gravity: -0.003, // Gia tốc trọng trường (âm vì vật rơi xuống)
-  moveSpeed: 0.25, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
+  moveSpeed: 0.15, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
 };
 
 // Vòng lặp render và cập nhật animation
