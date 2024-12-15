@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
@@ -13,10 +13,12 @@ const camera = new THREE.PerspectiveCamera(
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-// const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
 
+const loader = new THREE.TextureLoader();
+const sky_texture = loader.load('texture/sky.jpg');
 // Bầu trời ban ngày
-scene.background = new THREE.Color(0x87ceeb);
+scene.background = sky_texture;
 
 // Ánh sáng môi trường
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -28,7 +30,6 @@ directionalLight.position.set(0, 10, 10);
 scene.add(directionalLight);
 
 //Cát
-const loader = new THREE.TextureLoader();
 const sandTexture = loader.load("texture/sand.jpg"); // Đường dẫn tới texture cát
 sandTexture.wrapS = THREE.RepeatWrapping; // Lặp texture theo trục S (ngang)
 sandTexture.wrapT = THREE.RepeatWrapping; // Lặp texture theo trục T (dọc)
@@ -82,7 +83,7 @@ model_loader.load(
   (gltf) => {
     model.add(gltf.scene);
     console.log("Model loaded:", model);
-    model.position.set(0, 0, 495);
+    model.position.set(0, 0, 497);
     model.scale.set(0.7, 0.7, 0.7);
     scene.add(model);
 
@@ -157,7 +158,7 @@ generateObjects(
   obstacles,
   obstacleGeometry,
   obstacleMaterial,
-  80,
+  100,
   -485,
   490,
   "obstacle"
