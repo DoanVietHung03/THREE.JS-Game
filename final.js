@@ -46,21 +46,14 @@ for (let i = -2.5; i <= 2.5; i += 2.5) {
   }
 }
 
-// Nhân vật chính
-const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
-const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const player = new THREE.Mesh(playerGeometry, playerMaterial);
-player.position.set(0, 0.5, 495);
-scene.add(player);
-
 // Tải mô hình .glb
-let model;
+let model = new THREE.Object3D(); ;
 const loader = new GLTFLoader();
 loader.load(
   "/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
   (gltf) => {
-    console.log("Model loaded:", gltf);
-    model = gltf.scene;
+    model.add(gltf.scene);
+    console.log("Model loaded:", model);
     model.position.set(0, 0, 500);
     scene.add(model);
   },
@@ -134,7 +127,7 @@ generateObjects(
 );
 
 // Camera cố định trục X, giữ nguyên vị trí trục Z
-camera.position.set(0, 5, 10);
+camera.position.set(0, 3, 5);
 camera.lookAt(new THREE.Vector3(0, 0.5, 0));
 
 // Biến lưu điểm số
@@ -187,15 +180,9 @@ function movePlayer() {
 
 // Animation loop
 function animate() {
-  if (!model) {
-    camera.position.z = model.position.z + 10;
-    renderer.render(scene, camera);
-    return;
-  }
-  
   if (!isGameStarted || isPaused) {
     // Nếu game chưa bắt đầu hoặc đang tạm dừng, chỉ render cảnh mà không di chuyển
-    camera.position.z = model.position.z + 10;
+    camera.position.z = model.position.z + 5;
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
   } 
@@ -205,8 +192,8 @@ function animate() {
     requestAnimationFrame(animate);
 
     // Nhân vật chạy về phía trước
-    if (player.position.z > -495) {
-      player.position.z -= 0.1;
+    if (model.position.z > -495) {
+      model.position.z -= 0.1;
     } else {
       console.log("You reached the end of the road!");
       isGameOver = true; // Dừng game khi đạt cuối đường
@@ -224,17 +211,17 @@ function animate() {
       movePlayer();
       keys.right = false; // Tránh di chuyển liên tục
     }
-    if (keys.up && player.position.y === 0.5) {
-      player.position.y += 3;
-      setTimeout(() => (player.position.y -= 3), 500); // Nhảy lên rồi trở về vị trí cũ
+    if (keys.up && model.position.y === 0) {
+      model.position.y += 3;
+      setTimeout(() => (model.position.y -= 3), 500); // Nhảy lên rồi trở về vị trí cũ
     }
 
     // Cập nhật vị trí camera theo trục Z
-    camera.position.z = player.position.z + 10;
+    camera.position.z = model.position.z + 5;
 
     // Kiểm tra va chạm với tiền vàng
     coins.forEach((coin, index) => {
-      if (checkCollision(player, coin)) {
+      if (checkCollision(model, coin)) {
         scene.remove(coin);
         coins.splice(index, 1);
         score += 10;
@@ -244,7 +231,7 @@ function animate() {
 
     // Kiểm tra va chạm với chướng ngại vật
     obstacles.forEach((obstacle) => {
-      if (checkCollision(player, obstacle)) {
+      if (checkCollision(model, obstacle)) {
         console.log("Game Over!");
         isGameOver = true;
       }
