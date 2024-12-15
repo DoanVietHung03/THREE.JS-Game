@@ -5,7 +5,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
-  75,
+  80,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
@@ -57,6 +57,7 @@ loader.load(
     model.add(gltf.scene);
     console.log("Model loaded:", model);
     model.position.set(0, 0, 500);
+    model.scale.set(0.5, 0.5, 0.5);
     scene.add(model);
 
     mixer = new THREE.AnimationMixer(model);
@@ -191,8 +192,8 @@ function movePlayer() {
 let playerAttribute = {
   velocity: 0, // Vận tốc ban đầu (0 khi đứng yên)
   isJumping: false, // Trạng thái nhảy
-  gravity: -0.004, // Gia tốc trọng trường (âm vì vật rơi xuống)
-  jumpStrength: 0.2, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
+  gravity: -0.003, // Gia tốc trọng trường (âm vì vật rơi xuống)
+  jumpStrength: 0.15, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
   jumpHeight: 3, // Chiều cao nhảy tối đa
 };
 
@@ -203,7 +204,7 @@ const clock = new THREE.Clock();
 function animate() {
   if (!isGameStarted || isPaused) {
     // Nếu game chưa bắt đầu hoặc đang tạm dừng, chỉ render cảnh mà không di chuyển
-    camera.position.z = model.position.z + 5;
+    camera.position.z = model.position.z + 3;
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
   } else {
@@ -256,7 +257,7 @@ function animate() {
     }
 
     // Cập nhật vị trí camera theo trục Z
-    camera.position.z = model.position.z + 10;
+    camera.position.z = model.position.z + 3;
 
     // Kiểm tra va chạm với tiền vàng
     coins.forEach((coin, index) => {
