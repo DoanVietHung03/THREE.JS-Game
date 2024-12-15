@@ -48,11 +48,8 @@ for (let i = -2.5; i <= 2.5; i += 2.5) {
 }
 
 // Tải mô hình .glb
-<<<<<<< Updated upstream
-=======
 let model = new THREE.Object3D();
 let mixer; // AnimationMixer
->>>>>>> Stashed changes
 const loader = new GLTFLoader();
 loader.load(
   "/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
@@ -209,10 +206,6 @@ function animate() {
     camera.position.z = model.position.z + 5;
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
-<<<<<<< Updated upstream
-    requestAnimationFrame(animate);
-    return;
-=======
   } else {
     if (isGameOver) return; // Dừng game nếu trạng thái là kết thúc
 
@@ -264,60 +257,6 @@ function animate() {
 
     // Cập nhật vị trí camera theo trục Z
     camera.position.z = model.position.z + 10;
-
-    // Kiểm tra va chạm với tiền vàng
-    coins.forEach((coin, index) => {
-      if (checkCollision(model, coin)) {
-        scene.remove(coin);
-        coins.splice(index, 1);
-        score += 10;
-        console.log("Score:", score);
-      }
-    });
-
-    // Kiểm tra va chạm với chướng ngại vật
-    obstacles.forEach((obstacle) => {
-      if (checkCollision(model, obstacle)) {
-        console.log("Game Over!");
-        isGameOver = true;
-      }
-    });
-
-    renderer.render(scene, camera);
->>>>>>> Stashed changes
-  }
-
-  if (isGameOver) return; // Dừng game nếu trạng thái là kết thúc
-
-    requestAnimationFrame(animate);
-
-    // Nhân vật chạy về phía trước
-    if (model.position.z > -495) {
-      model.position.z -= 0.1;
-    } else {
-      console.log("You reached the end of the road!");
-      isGameOver = true; // Dừng game khi đạt cuối đường
-      return;
-    }
-
-    // Điều khiển nhân vật
-    if (keys.left && currentLane > 0) {
-      currentLane--;
-      movePlayer();
-      keys.left = false; // Tránh di chuyển liên tục
-    }
-    if (keys.right && currentLane < lanes.length - 1) {
-      currentLane++;
-      movePlayer();
-      keys.right = false; // Tránh di chuyển liên tục
-    }
-    if (keys.up && model.position.y === 0) {
-      model.position.y += 3;
-      setTimeout(() => (model.position.y -= 3), 500); // Nhảy lên rồi trở về vị trí cũ
-    }
-
-    // Cập nhật vị trí camera theo trục Z
-    camera.position.z = model.position.z + 5;
 
     // Kiểm tra va chạm với tiền vàng
     coins.forEach((coin, index) => {
