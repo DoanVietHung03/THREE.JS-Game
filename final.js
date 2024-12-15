@@ -127,7 +127,7 @@ generateObjects(
 );
 
 // Camera cố định trục X, giữ nguyên vị trí trục Z
-camera.position.set(0, 4, 5);
+camera.position.set(0, 3, 5);
 camera.lookAt(new THREE.Vector3(0, 0.5, 0));
 
 // Biến lưu điểm số
