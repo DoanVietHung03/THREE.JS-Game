@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
@@ -11,9 +11,9 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth - 10, window.innerHeight - 10);
+renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-const controls = new OrbitControls(camera, renderer.domElement);
+// const controls = new OrbitControls(camera, renderer.domElement);
 
 // Bầu trời ban ngày
 scene.background = new THREE.Color(0x87ceeb);
@@ -157,7 +157,7 @@ generateObjects(
   obstacles,
   obstacleGeometry,
   obstacleMaterial,
-  50,
+  80,
   -485,
   490,
   "obstacle"
@@ -222,7 +222,7 @@ let playerAttribute = {
   isMovingRight: false,
 
   gravity: -0.003, // Gia tốc trọng trường (âm vì vật rơi xuống)
-  moveSpeed: 0.25, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
+  moveSpeed: 0.15, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
 };
 
 // Vòng lặp render và cập nhật animation
