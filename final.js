@@ -47,13 +47,6 @@ for (let i = -2.5; i <= 2.5; i += 2.5) {
   }
 }
 
-// Nhân vật chính
-const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
-const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const player = new THREE.Mesh(playerGeometry, playerMaterial);
-player.position.set(0, 0.5, 495);
-//scene.add(player);
-
 // Tải mô hình .glb
 <<<<<<< Updated upstream
 =======
@@ -64,8 +57,8 @@ const loader = new GLTFLoader();
 loader.load(
   "/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
   (gltf) => {
-    console.log("Model loaded:", gltf);
-    const model = gltf.scene;
+    model.add(gltf.scene);
+    console.log("Model loaded:", model);
     model.position.set(0, 0, 500);
     scene.add(model);
 
@@ -147,7 +140,7 @@ generateObjects(
 );
 
 // Camera cố định trục X, giữ nguyên vị trí trục Z
-camera.position.set(0, 5, 10);
+camera.position.set(0, 3, 5);
 camera.lookAt(new THREE.Vector3(0, 0.5, 0));
 
 // Biến lưu điểm số
@@ -195,7 +188,7 @@ const lanes = [-3.75, 0, 3.75]; // Các vị trí x của làn
 let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: phải)
 
 function movePlayer() {
-  player.position.x = lanes[currentLane];
+  model.position.x = lanes[currentLane];
 }
 
 let playerAttribute = {
@@ -213,6 +206,8 @@ const clock = new THREE.Clock();
 function animate() {
   if (!isGameStarted || isPaused) {
     // Nếu game chưa bắt đầu hoặc đang tạm dừng, chỉ render cảnh mà không di chuyển
+    camera.position.z = model.position.z + 5;
+    requestAnimationFrame(animate);
     renderer.render(scene, camera);
 <<<<<<< Updated upstream
     requestAnimationFrame(animate);
@@ -294,55 +289,56 @@ function animate() {
 
   if (isGameOver) return; // Dừng game nếu trạng thái là kết thúc
 
-  requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
 
-  // Nhân vật chạy về phía trước
-  if (player.position.z > -495) {
-    player.position.z -= 0.1;
-  } else {
-    console.log("You reached the end of the road!");
-    isGameOver = true; // Dừng game khi đạt cuối đường
-    return;
-  }
-
-  // Điều khiển nhân vật
-  if (keys.left && currentLane > 0) {
-    currentLane--;
-    movePlayer();
-    keys.left = false; // Tránh di chuyển liên tục
-  }
-  if (keys.right && currentLane < lanes.length - 1) {
-    currentLane++;
-    movePlayer();
-    keys.right = false; // Tránh di chuyển liên tục
-  }
-  if (keys.up && player.position.y === 0.5) {
-    player.position.y += 3;
-    setTimeout(() => (player.position.y -= 3), 500); // Nhảy lên rồi trở về vị trí cũ
-  }
-
-  // Cập nhật vị trí camera theo trục Z
-  camera.position.z = player.position.z + 10;
-
-  // Kiểm tra va chạm với tiền vàng
-  coins.forEach((coin, index) => {
-    if (checkCollision(player, coin)) {
-      scene.remove(coin);
-      coins.splice(index, 1);
-      score += 10;
-      console.log("Score:", score);
+    // Nhân vật chạy về phía trước
+    if (model.position.z > -495) {
+      model.position.z -= 0.1;
+    } else {
+      console.log("You reached the end of the road!");
+      isGameOver = true; // Dừng game khi đạt cuối đường
+      return;
     }
-  });
 
-  // Kiểm tra va chạm với chướng ngại vật
-  obstacles.forEach((obstacle) => {
-    if (checkCollision(player, obstacle)) {
-      console.log("Game Over!");
-      isGameOver = true;
+    // Điều khiển nhân vật
+    if (keys.left && currentLane > 0) {
+      currentLane--;
+      movePlayer();
+      keys.left = false; // Tránh di chuyển liên tục
     }
-  });
+    if (keys.right && currentLane < lanes.length - 1) {
+      currentLane++;
+      movePlayer();
+      keys.right = false; // Tránh di chuyển liên tục
+    }
+    if (keys.up && model.position.y === 0) {
+      model.position.y += 3;
+      setTimeout(() => (model.position.y -= 3), 500); // Nhảy lên rồi trở về vị trí cũ
+    }
 
-  renderer.render(scene, camera);
+    // Cập nhật vị trí camera theo trục Z
+    camera.position.z = model.position.z + 5;
+
+    // Kiểm tra va chạm với tiền vàng
+    coins.forEach((coin, index) => {
+      if (checkCollision(model, coin)) {
+        scene.remove(coin);
+        coins.splice(index, 1);
+        score += 10;
+        console.log("Score:", score);
+      }
+    });
+
+    // Kiểm tra va chạm với chướng ngại vật
+    obstacles.forEach((obstacle) => {
+      if (checkCollision(model, obstacle)) {
+        console.log("Game Over!");
+        isGameOver = true;
+      }
+    });
+
+    renderer.render(scene, camera);
+  }
 }
 
 animate();
