@@ -1,11 +1,13 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
-  100,
+  75,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
@@ -16,7 +18,7 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 
 const loader = new THREE.TextureLoader();
-const sky_texture = loader.load('texture/sky.jpg');
+const sky_texture = loader.load("texture/sky.jpg");
 // Bầu trời ban ngày
 scene.background = sky_texture;
 
@@ -101,7 +103,24 @@ model_loader.load(
     console.error("An error occurred while loading the model:", error);
   }
 );
-console.log(`model ${model}`);
+
+const text_loader = new FontLoader();
+text_loader.load(
+  "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+  function (font) {
+    const textGeometry = new TextGeometry("ready!", {
+      font: font,
+      size: 1,
+      height: 0.2,
+    });
+    const textMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+    });
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(0, 10, 480);
+    scene.add(textMesh);
+  }
+);
 
 //---background---
 const bg_loader = new GLTFLoader();
@@ -211,8 +230,18 @@ generateObjects(
   "obstacle"
 );
 
+let cameraAttribute = {
+  initX: 0,
+  initY: 1,
+  initZ: 5,
+};
+
 // Camera cố định trục X, giữ nguyên vị trí trục Z
-camera.position.set(0, 3, 5);
+camera.position.set(
+  cameraAttribute.initX,
+  cameraAttribute.initY,
+  cameraAttribute.initZ
+);
 camera.lookAt(new THREE.Vector3(0, 0.5, 0));
 
 // Biến lưu điểm số
@@ -261,6 +290,7 @@ let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: ph�
 
 function movePlayer(moveSpeed) {
   model.position.x += moveSpeed;
+  camera.position.x = model.position.x;
 }
 
 let playerAttribute = {
@@ -288,7 +318,7 @@ function animate() {
 
     requestAnimationFrame(animate);
 
-    // Cập nhật mixer
+    // Cập nhật mixer, tạo animation cho model (đom đóm đập cánhcánh)
     if (mixer) {
       mixer.update(clock.getDelta()); // Cập nhật hoạt hình theo thời gian
     }
@@ -303,30 +333,38 @@ function animate() {
     }
 
     // Điều khiển nhân vật
-    if (keys.left) {
+    if (keys.left && !playerAttribute.isMovingRight) {
       if (!playerAttribute.isMovingLeft && currentLane > 0) {
         currentLane--;
         playerAttribute.isMovingLeft = true;
       }
     }
     if (playerAttribute.isMovingLeft) {
+      //tọa độ giảm dần với tốc độ là moveSpeed
       movePlayer(-playerAttribute.moveSpeed);
+
+      //Kiểm tra dừng
       if (model.position.x < lanes[currentLane]) {
         model.position.x = lanes[currentLane];
+        camera.position.x = model.position.x;
         playerAttribute.isMovingLeft = false;
         keys.left = false;
       }
     }
-    if (keys.right) {
+    if (keys.right && !playerAttribute.isMovingLeft) {
       if (!playerAttribute.isMovingRight && currentLane < lanes.length - 1) {
         currentLane++;
         playerAttribute.isMovingRight = true;
       }
     }
     if (playerAttribute.isMovingRight) {
+      //tọa độ tăng dần với tốc độ là moveSpeed
       movePlayer(playerAttribute.moveSpeed);
+
+      //Kiểm tra dừng
       if (model.position.x > lanes[currentLane]) {
         model.position.x = lanes[currentLane];
+        camera.position.x = model.position.x;
         playerAttribute.isMovingRight = false;
         keys.right = false;
       }
@@ -341,7 +379,7 @@ function animate() {
       playerAttribute.velocity += playerAttribute.gravity; // Áp dụng lực hấp dẫn
 
       model.position.y += playerAttribute.velocity; // Cập nhật vị trí của đối tượng
-
+      camera.position.y = model.position.y + cameraAttribute.initY;
       // Kiểm tra khi đối tượng chạm đất
       if (model.position.y <= 0) {
         model.position.y = 0; // Đảm bảo đối tượng không đi dưới mặt đất
