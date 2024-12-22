@@ -45,15 +45,11 @@ const groundMaterial = new THREE.MeshStandardMaterial({
   metalness: 0, // Tắt phản chiếu kim loại
 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-
-// 4. Xoay và đặt mặt phẳng
 ground.rotation.x = -Math.PI / 2; // Nằm ngang
 ground.position.y = -0.5; // Vị trí mặt đất
-
-// 5. Thêm vào scene
 scene.add(ground);
 
-// Sàn đường
+// Đường đi
 const planeGeometry = new THREE.PlaneGeometry(10, 1000);
 const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
 const plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -61,20 +57,28 @@ plane.rotation.x = -Math.PI / 2;
 scene.add(plane);
 
 // Vạch kẻ đường
-const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+const LineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 for (let i = -2.5; i <= 2.5; i += 2.5) {
   if (i == 0) {
     continue;
   } else {
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(i, 0.01, -500),
-      new THREE.Vector3(i, 0.01, 500),
-    ]);
-
-    const line = new THREE.Line(lineGeometry, lineMaterial);
-    scene.add(line);
+    for (let z = 496; z > -496; z -= 5) {
+      const LineGeometry = new THREE.PlaneGeometry(0.5, 3);
+      const Line = new THREE.Mesh(LineGeometry, LineMaterial);
+      Line.rotation.x = -Math.PI/2;
+      Line.position.set(i, 0.01, z - 3);
+      scene.add(Line);
+    }
   }
 }
+
+// Vạch xuất phát
+const startLineGeometry = new THREE.PlaneGeometry(10, 1); // Vạch rộng 20, dày 1
+const startLineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const startLine = new THREE.Mesh(startLineGeometry, startLineMaterial);
+startLine.rotation.x = -Math.PI / 2; // Đặt nằm ngang
+startLine.position.set(0, 0.01, 496); // Đặt ở đầu đường đua
+scene.add(startLine);
 
 // Tải mô hình .glb
 let model = new THREE.Object3D();
@@ -217,7 +221,7 @@ const obstacleGeometry = new THREE.BoxGeometry(1, 1, 1);
 const obstacleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
 // Tiền vàng
-generateObjects(coins, coinGeometry, coinMaterial, 30, -485, 490, "coin");
+generateObjects(coins, coinGeometry, coinMaterial, 30, -485, 485, "coin");
 
 // Chướng ngại vật
 generateObjects(
@@ -226,7 +230,7 @@ generateObjects(
   obstacleMaterial,
   100,
   -485,
-  490,
+  485,
   "obstacle"
 );
 
