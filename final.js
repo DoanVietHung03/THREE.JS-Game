@@ -119,7 +119,7 @@ model_loader.load(
   "GLB_Models/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
   (gltf) => {
     model.add(gltf.scene);
-    console.log("Model loaded:", model);
+    // console.log("Model loaded:", model);
     model.position.set(0, 0, 498);
     model.scale.set(0.7, 0.7, 0.7);
     scene.add(model);
@@ -168,7 +168,7 @@ function loadTreeModel(modelPath, positionX, positionZ) {
     modelPath,
     (gltf) => {
       tree.add(gltf.scene);
-      console.log("Model loaded:", modelPath);
+      // console.log("Model loaded:", modelPath);
       tree.position.set(positionX, 0, positionZ); // Đặt vị trí cây
       tree.scale.set(0.7, 0.7, 0.7);
       scene.add(tree);
@@ -203,66 +203,128 @@ for (let i = 0; i < 10; i++) {
   loadTreeModel(modelPath, positionX, positionZ);
 }
 
-// Hàm tạo ngẫu nhiên vị trí các vật thể
-function generateObjects(
-  objectArray,
-  geometry,
-  material,
-  count,
-  minZ,
-  maxZ,
-  type
-) {
+// Load obstacles và coins 
+const obs_co_loader = new GLTFLoader();
+
+// Đường dẫn đến GLB folders
+const GLB_links = [
+  '/GLB_Models/car_1.glb',
+  '/GLB_Models/car_2.glb',
+  '/GLB_Models/car_3.glb',
+  '/GLB_Models/car_4.glb',
+  '/GLB_Models/coin.glb',
+];
+
+function loadObsCoModel(GLB_links, positionX, positionZ, type) {
+  return new Promise((resolve, reject) => {
+    if (type === "obstacle") {
+      const filteredLinks = GLB_links.filter(link => type === "obstacle" ? link.includes('car') : link.includes('coin'));
+      if (filteredLinks.length === 0) {
+        console.log(`Không tìm thấy mô hình cho ${type}.`);
+        return null;
+      }
+      const modelPath = filteredLinks[Math.floor(Math.random() * filteredLinks.length)];
+
+      obs_co_loader.load(
+        modelPath,
+        (gltf) => {
+          let obs = new THREE.Object3D();
+          obs.add(gltf.scene);
+          console.log("Obstacle model loaded:", modelPath);
+          obs.position.set(positionX, 0, positionZ);
+          obs.scale.set(0.7, 0.7, 0.7);
+          obs.rotation.y = -Math.PI/2;
+          scene.add(obs);
+
+          // Tạo AnimationMixer nếu mô hình có animation
+          let mixer = new THREE.AnimationMixer(gltf.scene);
+          mixers.push(mixer);
+
+          resolve(obs); // Trả về đối tượng obs
+        },
+        (xhr) => {
+          console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+        },
+        (error) => {
+          console.error("An error occurred while loading the obstacle model:", error);
+          reject(error); // Trả về lỗi
+        }
+      );
+    } else if (type === "coin") {
+      const filteredLinks = GLB_links.filter(link => type === "obstacle" ? link.includes("car") : link.includes("coin"));
+      if (filteredLinks.length === 0) {
+        console.log(`Không tìm thấy mô hình cho ${type}.`);
+        return null;
+      }
+      const modelPath = filteredLinks[Math.floor(Math.random() * filteredLinks.length)];
+
+      obs_co_loader.load(
+        modelPath,
+        (gltf) => {
+          let co = new THREE.Object3D();
+          co.add(gltf.scene);
+          console.log("Coin model loaded:", modelPath);
+          co.position.set(positionX, 0.5, positionZ);
+          co.scale.set(0.02, 0.02, 0.02);
+          co.rotation.x = Math.PI/2;
+          scene.add(co);
+
+          // Tạo AnimationMixer nếu mô hình có animation
+          let mixer = new THREE.AnimationMixer(gltf.scene);
+          mixers.push(mixer);
+
+          resolve(co); // Trả về đối tượng co
+        },
+        (xhr) => {
+          console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+        },
+        (error) => {
+          console.error("An error occurred while loading the coin model:", error);
+          reject(error); // Trả về lỗi
+        }
+      );
+    } else {
+      reject('Invalid type. Use "obstacle" or "coin".'); // Trả về lỗi nếu type không hợp lệ
+    }
+  });
+}
+
+async function generateObjects(objectArray, count, minZ, maxZ, type, GLB_links) {
   const segmentLength = (maxZ - minZ) / count; // Độ dài mỗi đoạn
   for (let i = 0; i < count; i++) {
-    const object = new THREE.Mesh(geometry, material);
     const lane = Math.floor(Math.random() * 3) - 1; // Chỉ định làn (-1, 0, 1)
     const zPosition =
       maxZ - i * segmentLength - (Math.random() * segmentLength) / 2;
+    const positionX = lane * 3.75; // Xác định vị trí X dựa trên làn chạy
 
-    object.position.set(
-      lane * 3.75, // Xác định làn chạy
-      0.5, // Fixed Y position
-      zPosition // Random Z position trong đoạn
-    );
+    // Load mô hình GLB cho từng đối tượng
+    const object = await loadObsCoModel(GLB_links, positionX, zPosition, type);
+    if (object) {
+      scene.add(object); // Thêm đối tượng vào scene
+      objectArray.push(object); // Đẩy đối tượng vào mảng
+    }
 
     // Đảm bảo chướng ngại vật không chồng lên tiền vàng
     if (type === "obstacle") {
       const isColliding = coins.some((coin) => {
         return (
-          Math.abs(coin.position.z - object.position.z) < 5 &&
-          Math.abs(coin.position.x - object.position.x) < 1
+          Math.abs(coin.position.z - zPosition) < 5 &&
+          Math.abs(coin.position.x - positionX) < 1
         );
       });
       if (isColliding) continue; // Bỏ qua nếu có va chạm
     }
-
-    scene.add(object);
-    objectArray.push(object);
   }
 }
 
 const coins = [];
-const coinGeometry = new THREE.SphereGeometry(0.3, 16, 16);
-const coinMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-
 const obstacles = [];
-const obstacleGeometry = new THREE.BoxGeometry(1, 1, 1);
-const obstacleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
-// Tiền vàng
-generateObjects(coins, coinGeometry, coinMaterial, 30, -485, 485, "coin");
+// Tạo tiền vàng
+generateObjects(coins, 30, -485, 485, "coin", GLB_links);
 
-// Chướng ngại vật
-generateObjects(
-  obstacles,
-  obstacleGeometry,
-  obstacleMaterial,
-  100,
-  -485,
-  485,
-  "obstacle"
-);
+// Tạo chướng ngại vật
+generateObjects(obstacles, 100, -485, 485, "obstacle", GLB_links);
 
 let cameraAttribute = {
   initX: 0,
