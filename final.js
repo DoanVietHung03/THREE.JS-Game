@@ -185,7 +185,7 @@ function loadTreeModel(modelPath, positionX, positionZ) {
     }
   );
 }
-
+     
 // Hàm chọn ngẫu nhiên bên trái hoặc phải và mô hình cây
 function getRandomSideAndModel() {
   const models = ["/GLB_Models/tree_1.glb", "/GLB_Models/tree_2.glb"];
