@@ -1,13 +1,11 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
-import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
-  75,
+  100,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
@@ -18,7 +16,7 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 
 const loader = new THREE.TextureLoader();
-const sky_texture = loader.load("texture/sky.jpg");
+const sky_texture = loader.load('texture/sky.jpg');
 // Bầu trời ban ngày
 scene.background = sky_texture;
 
@@ -45,11 +43,15 @@ const groundMaterial = new THREE.MeshStandardMaterial({
   metalness: 0, // Tắt phản chiếu kim loại
 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+
+// 4. Xoay và đặt mặt phẳng
 ground.rotation.x = -Math.PI / 2; // Nằm ngang
 ground.position.y = -0.5; // Vị trí mặt đất
+
+// 5. Thêm vào scene
 scene.add(ground);
 
-// Đường đi
+// Sàn đường
 const planeGeometry = new THREE.PlaneGeometry(10, 1000);
 const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
 const plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -57,18 +59,18 @@ plane.rotation.x = -Math.PI / 2;
 scene.add(plane);
 
 // Vạch kẻ đường
-const LineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 for (let i = -2.5; i <= 2.5; i += 2.5) {
   if (i == 0) {
     continue;
   } else {
-    for (let z = 496; z > -496; z -= 5) {
-      const LineGeometry = new THREE.PlaneGeometry(0.5, 3);
-      const Line = new THREE.Mesh(LineGeometry, LineMaterial);
-      Line.rotation.x = -Math.PI/2;
-      Line.position.set(i, 0.01, z - 3);
-      scene.add(Line);
-    }
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(i, 0.01, -500),
+      new THREE.Vector3(i, 0.01, 500),
+    ]);
+
+    const line = new THREE.Line(lineGeometry, lineMaterial);
+    scene.add(line);
   }
 }
 
@@ -139,24 +141,54 @@ model_loader.load(
     console.error("An error occurred while loading the model:", error);
   }
 );
+console.log(`model ${model}`);
 
-const text_loader = new FontLoader();
-text_loader.load(
-  "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-  function (font) {
-    const textGeometry = new TextGeometry("ready!", {
-      font: font,
-      size: 1,
-      height: 0.2,
-    });
-    const textMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-    });
-    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-    textMesh.position.set(0, 10, 480);
-    scene.add(textMesh);
-  }
-);
+//---background---
+const bg_loader = new GLTFLoader();
+let mixers = [];
+
+// Hàm tải mô hình cây
+function loadTreeModel(modelPath, positionX, positionZ) {
+  let tree = new THREE.Object3D();
+  bg_loader.load(
+    modelPath,
+    (gltf) => {
+      tree.add(gltf.scene);
+      console.log("Model loaded:", modelPath);
+      tree.position.set(positionX, 0, positionZ); // Đặt vị trí cây
+      tree.scale.set(0.7, 0.7, 0.7);
+      scene.add(tree);
+
+      // Tạo AnimationMixer nếu mô hình có animation
+      let mixer = new THREE.AnimationMixer(gltf.scene);
+      mixers.push(mixer);
+    },
+    (xhr) => {
+      console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+    },
+    (error) => {
+      console.error("An error occurred while loading the model:", error);
+    }
+  );
+}
+
+// Hàm chọn ngẫu nhiên bên trái hoặc phải và mô hình cây
+function getRandomSideAndModel() {
+  const models = ["/element/tree_1.glb", "/element/tree_2.glb"];
+  const randomModel = models[Math.floor(Math.random() * models.length)];
+  const randomSide = Math.random() > 0.5 ? "left" : "right";
+
+  const positionX = randomSide === "left" ? -10 : 10; // Bên trái: -10, bên phải: 10
+  const positionZ = Math.random() * 500; // Ngẫu nhiên trên trục Z
+  return { modelPath: randomModel, positionX, positionZ };
+}
+
+// Tải 10 mô hình xen kẽ ngẫu nhiên
+for (let i = 0; i < 10; i++) {
+  const { modelPath, positionX, positionZ } = getRandomSideAndModel();
+  loadTreeModel(modelPath, positionX, positionZ);
+}
+
 
 // Hàm tạo ngẫu nhiên vị trí các vật thể
 function generateObjects(
@@ -206,7 +238,7 @@ const obstacleGeometry = new THREE.BoxGeometry(1, 1, 1);
 const obstacleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
 // Tiền vàng
-generateObjects(coins, coinGeometry, coinMaterial, 30, -485, 485, "coin");
+generateObjects(coins, coinGeometry, coinMaterial, 30, -485, 490, "coin");
 
 // Chướng ngại vật
 generateObjects(
@@ -215,22 +247,12 @@ generateObjects(
   obstacleMaterial,
   100,
   -485,
-  485,
+  490,
   "obstacle"
 );
 
-let cameraAttribute = {
-  initX: 0,
-  initY: 1,
-  initZ: 5,
-};
-
 // Camera cố định trục X, giữ nguyên vị trí trục Z
-camera.position.set(
-  cameraAttribute.initX,
-  cameraAttribute.initY,
-  cameraAttribute.initZ
-);
+camera.position.set(0, 3, 5);
 camera.lookAt(new THREE.Vector3(0, 0.5, 0));
 
 // Biến lưu điểm số
@@ -279,7 +301,6 @@ let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: ph�
 
 function movePlayer(moveSpeed) {
   model.position.x += moveSpeed;
-  camera.position.x = model.position.x;
 }
 
 let playerAttribute = {
@@ -312,7 +333,7 @@ function animate() {
 
     requestAnimationFrame(animate);
 
-    // Cập nhật mixer, tạo animation cho model (đom đóm đập cánhcánh)
+    // Cập nhật mixer
     if (mixer) {
       mixer.update(clock.getDelta()); // Cập nhật hoạt hình theo thời gian
     }
@@ -327,38 +348,30 @@ function animate() {
     }
 
     // Điều khiển nhân vật
-    if (keys.left && !playerAttribute.isMovingRight) {
+    if (keys.left) {
       if (!playerAttribute.isMovingLeft && currentLane > 0) {
         currentLane--;
         playerAttribute.isMovingLeft = true;
       }
     }
     if (playerAttribute.isMovingLeft) {
-      //tọa độ giảm dần với tốc độ là moveSpeed
       movePlayer(-playerAttribute.moveSpeed);
-
-      //Kiểm tra dừng
       if (model.position.x < lanes[currentLane]) {
         model.position.x = lanes[currentLane];
-        camera.position.x = model.position.x;
         playerAttribute.isMovingLeft = false;
         keys.left = false;
       }
     }
-    if (keys.right && !playerAttribute.isMovingLeft) {
+    if (keys.right) {
       if (!playerAttribute.isMovingRight && currentLane < lanes.length - 1) {
         currentLane++;
         playerAttribute.isMovingRight = true;
       }
     }
     if (playerAttribute.isMovingRight) {
-      //tọa độ tăng dần với tốc độ là moveSpeed
       movePlayer(playerAttribute.moveSpeed);
-
-      //Kiểm tra dừng
       if (model.position.x > lanes[currentLane]) {
         model.position.x = lanes[currentLane];
-        camera.position.x = model.position.x;
         playerAttribute.isMovingRight = false;
         keys.right = false;
       }
@@ -373,7 +386,7 @@ function animate() {
       playerAttribute.velocity += playerAttribute.gravity; // Áp dụng lực hấp dẫn
 
       model.position.y += playerAttribute.velocity; // Cập nhật vị trí của đối tượng
-      camera.position.y = model.position.y + cameraAttribute.initY;
+
       // Kiểm tra khi đối tượng chạm đất
       if (model.position.y <= 0) {
         model.position.y = 0; // Đảm bảo đối tượng không đi dưới mặt đất
@@ -413,3 +426,107 @@ sky_texture.wrapT = THREE.RepeatWrapping;
 sky_texture.repeat.set(0.5, 0.5);
 
 animate();
+
+//----------Xe và xu-----------
+// // Hàm tải mô hình ngẫu nhiên (xe hoặc đồng xu)
+// function loadObjectModel(modelPaths, callback) {
+//   const object_loader = new GLTFLoader();
+
+//   // Chọn mô hình ngẫu nhiên
+//   const randomModelPath = modelPaths[Math.floor(Math.random() * modelPaths.length)];
+
+//   // Tải mô hình
+//   object_loader.load(
+//     randomModelPath,
+//     (gltf) => {
+//       console.log("Model successfully loaded:", randomModelPath);
+//       callback(gltf.scene); // Trả về mô hình đã tải qua callback
+//     },
+//     (xhr) => {
+//       console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+//     },
+//     (error) => {
+//       console.error("An error occurred while loading the model:", error);
+//     }
+//   );
+// }
+
+// // Hàm tạo đối tượng từ mô hình
+// function generateObjectsFromModel(
+//   scene,
+//   objectArray,
+//   modelPaths,
+//   count,
+//   minZ,
+//   maxZ,
+//   type,
+//   otherObjects = []
+// ) {
+//   const segmentLength = (maxZ - minZ) / count;
+
+//   for (let i = 0; i < count; i++) {
+//     loadObjectModel(modelPaths, (model) => {
+//       const object = new THREE.Object3D();
+//       object.add(model.clone()); // Thêm mô hình vào đối tượng
+
+//       const lane = Math.floor(Math.random() * 3) - 1;
+//       const zPosition =
+//         maxZ - i * segmentLength - (Math.random() * segmentLength) / 2;
+
+//       object.position.set(lane * 3.75, 0.5, zPosition);
+
+//       // Kiểm tra va chạm nếu là chướng ngại vật
+//       if (type === "obstacle") {
+//         const isColliding = otherObjects.some((otherObject) => {
+//           return (
+//             Math.abs(otherObject.position.z - object.position.z) < 5 &&
+//             Math.abs(otherObject.position.x - object.position.x) < 1
+//           );
+//         });
+//         if (isColliding) return; // Bỏ qua nếu có va chạm
+//       }
+
+//       scene.add(object);
+//       objectArray.push(object);
+//     });
+//   }
+// }
+
+// // Hàm khởi tạo và thêm tiền vàng
+// function addCoins(coinsArray, coinModelPaths, count, minZ, maxZ) {
+//   generateObjectsFromModel(scene,coinsArray, coinModelPaths, count, minZ, maxZ, "coin");
+// }
+
+// // Hàm khởi tạo và thêm chướng ngại vật
+// function addObstacles(obstaclesArray, obstacleModelPaths, count, minZ, maxZ, coinsArray) {
+//   generateObjectsFromModel(
+//     scene,
+//     obstaclesArray,
+//     obstacleModelPaths,
+//     count,
+//     minZ,
+//     maxZ,
+//     "obstacle",
+//     coinsArray
+//   );
+// }
+
+// // Sử dụng các hàm để thêm đối tượng
+// const coins = [];
+// const obstacles = [];
+
+
+// // Đường dẫn tới các mô hình
+// const coinModelPaths = [
+//   "/element/coin.glb",
+// ];
+// const obstacleModelPaths = [
+//   "/element/car_1.glb",
+//   "/element/car_2.glb",
+//   "/element/car_3.glb",
+//   "/element/car_4.glb",
+// ];
+
+// // Gọi hàm để thêm tiền vàng và chướng ngại vật
+// addCoins(scene, coins, coinModelPaths, 30, -485, 485);
+// addObstacles(scene,obstacles, obstacleModelPaths, 100, -485, 485, coins);
