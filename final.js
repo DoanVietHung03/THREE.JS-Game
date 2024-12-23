@@ -80,6 +80,38 @@ startLine.rotation.x = -Math.PI / 2; // Đặt nằm ngang
 startLine.position.set(0, 0.01, 496); // Đặt ở đầu đường đua
 scene.add(startLine);
 
+// Vạch đích (cờ caro)
+const squareSize = 1; // Kích thước mỗi ô vuông
+const numSquares = 10; // Số ô vuông trên mỗi hàng (tùy chỉnh theo chiều rộng đường đua)
+const finishLineWidth = numSquares * squareSize; // Chiều rộng của vạch đích
+const finishLineLength = 3; // Chiều dài của vạch đích
+const startZ = -496; // Vị trí z của vạch đích
+
+for (let row = 0; row < finishLineLength / squareSize; row++) {
+  for (let col = 0; col < numSquares; col++) {
+    // Tính toán màu xen kẽ
+    const isBlack = (row + col) % 2 === 0;
+    const color = isBlack ? 0x000000 : 0xffffff;
+
+    // Tạo hình vuông (mặt phẳng nhỏ)
+    const squareGeometry = new THREE.PlaneGeometry(squareSize, squareSize);
+    const squareMaterial = new THREE.MeshBasicMaterial({ color: color });
+    const square = new THREE.Mesh(squareGeometry, squareMaterial);
+
+    // Xoay mặt phẳng để nằm ngang
+    square.rotation.x = -Math.PI / 2;
+
+    // Đặt vị trí cho ô vuông
+    const x = col * squareSize - finishLineWidth / 2 + squareSize / 2;
+    const z = startZ + row * squareSize - finishLineLength / 2;
+    square.position.set(x, 0.01, z);
+
+    // Thêm vào cảnh
+    scene.add(square);
+  }
+}
+
+
 // Tải mô hình .glb
 let model = new THREE.Object3D();
 let mixer; // AnimationMixer
@@ -89,7 +121,7 @@ model_loader.load(
   (gltf) => {
     model.add(gltf.scene);
     console.log("Model loaded:", model);
-    model.position.set(0, 0, 497);
+    model.position.set(0, 0, 498);
     model.scale.set(0.7, 0.7, 0.7);
     scene.add(model);
 
@@ -266,11 +298,16 @@ const clock = new THREE.Clock();
 // Animation loop
 function animate() {
   if (!isGameStarted || isPaused) {
+    // Thay đổi offset theo thời gian (lặp lại)
+    sky_texture.offset.x += 0.00001; // Điều chỉnh tốc độ
+    sky_texture.offset.y += 0.000005; // Điều chỉnh tốc độ
     // Nếu game chưa bắt đầu hoặc đang tạm dừng, chỉ render cảnh mà không di chuyển
     camera.position.z = model.position.z + 3;
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
   } else {
+    sky_texture.offset.x += 0.00001; // Điều chỉnh tốc độ
+    sky_texture.offset.y += 0.000005; // Điều chỉnh tốc độ
     if (isGameOver) return; // Dừng game nếu trạng thái là kết thúc
 
     requestAnimationFrame(animate);
@@ -369,5 +406,10 @@ function animate() {
     renderer.render(scene, camera);
   }
 }
+
+// Đảm bảo texture lặp lại
+sky_texture.wrapS = THREE.RepeatWrapping;
+sky_texture.wrapT = THREE.RepeatWrapping;
+sky_texture.repeat.set(0.5, 0.5);
 
 animate();
