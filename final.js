@@ -3,7 +3,37 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+import { gsap } from "gsap";
+import * as dat from "dat.gui";
 
+let playerAttribute = {
+  velocity: 0, // Vận tốc ban đầu (0 khi đứng yên)
+  isJumping: false, // Trạng thái nhảy
+  isMovingLeft: false,
+  isMovingRight: false,
+
+  gravity: -0.003, // Gia tốc trọng trường (âm vì vật rơi xuống)
+  moveSpeed: 0.15, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
+};
+let cameraAttribute = {
+  initX: 0,
+  initY: 1,
+  initZ: 5,
+};
+let gameAttribute = {
+  isPlayerReady: false,
+  // Biến lưu điểm số
+  score: 0,
+  // Biến lưu trạng thái game
+  isGameStarted: false, // Game đang chạy hay không
+  isPaused: false, // Game tạm dừng hay không
+  isGameOver: false,
+  isCountReady: false,
+};
+// Hàm di chuyển nhân vật giữa các làn
+const lanes = [-3.75, 0, 3.75]; // Các vị trí x của làn
+let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: phải)
+let gui, menuOptions;
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -12,7 +42,10 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMapSoft = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -27,9 +60,33 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
 // Ánh sáng định hướng
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-directionalLight.position.set(0, 10, 10);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+directionalLight.castShadow = true;
+
 scene.add(directionalLight);
+directionalLight.position.set(-10, 5, 0);
+directionalLight.target.position.set(0, 0, 0); // Set target of the light
+
+// Set up the shadow camera for directional light
+directionalLight.shadow.camera.left = -500;
+directionalLight.shadow.camera.right = 500;
+directionalLight.shadow.camera.top = 100;
+directionalLight.shadow.camera.bottom = -100;
+directionalLight.shadow.camera.near = 1;
+directionalLight.shadow.camera.far = 30;
+
+directionalLight.shadow.bias = -0.00001; // Điều chỉnh bias để bóng không bị lệch
+directionalLight.shadow.mapSize.set(8192, 8192); // Đặt độ phân giải bóng cao hơn
+
+function setShadowsForAllObjects(scene) {
+  scene.traverse((object) => {
+    if (object.isMesh) {
+      // Kiểm tra nếu đối tượng là mesh
+      object.castShadow = true;
+      object.receiveShadow = true;
+    }
+  });
+}
 
 //Cát
 const sandTexture = loader.load("texture/sand.jpg"); // Đường dẫn tới texture cát
@@ -42,18 +99,21 @@ const groundGeometry = new THREE.PlaneGeometry(10000, 10000); // Kích thước 
 const groundMaterial = new THREE.MeshStandardMaterial({
   map: sandTexture, // Texture được áp dụng
   roughness: 1, // Độ nhám để làm cát không bóng
-  metalness: 0, // Tắt phản chiếu kim loại
 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2; // Nằm ngang
-ground.position.y = -0.5; // Vị trí mặt đất
+ground.position.y = -0.03; // Vị trí mặt đất
+ground.receiveShadow = true;
+// ground.renderOrder = 0;
 scene.add(ground);
 
 // Đường đi
 const planeGeometry = new THREE.PlaneGeometry(10, 1000);
-const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
+const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
 const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 plane.rotation.x = -Math.PI / 2;
+plane.receiveShadow = true;
+// plane.renderOrder = 1;
 scene.add(plane);
 
 // Vạch kẻ đường
@@ -65,8 +125,9 @@ for (let i = -2.5; i <= 2.5; i += 2.5) {
     for (let z = 496; z > -496; z -= 5) {
       const LineGeometry = new THREE.PlaneGeometry(0.5, 3);
       const Line = new THREE.Mesh(LineGeometry, LineMaterial);
-      Line.rotation.x = -Math.PI/2;
-      Line.position.set(i, 0.01, z - 3);
+      Line.rotation.x = -Math.PI / 2;
+      Line.position.set(i, 0.03, z - 3);
+      // Line.renderOrder = 2;
       scene.add(Line);
     }
   }
@@ -113,6 +174,7 @@ for (let row = 0; row < finishLineLength / squareSize; row++) {
 
 // Tải mô hình .glb
 let model = new THREE.Object3D();
+
 let mixer; // AnimationMixer
 const model_loader = new GLTFLoader();
 model_loader.load(
@@ -122,6 +184,14 @@ model_loader.load(
     // console.log("Model loaded:", model);
     model.position.set(0, 0, 498);
     model.scale.set(0.7, 0.7, 0.7);
+    // Lặp qua tất cả các đối tượng trong model
+    model.traverse((object) => {
+      if (object.isMesh) {
+        // Kiểm tra nếu đối tượng là mesh
+        object.castShadow = true; // Đặt castShadow cho mesh
+        object.receiveShadow = true; // Đặt receiveShadow cho mesh
+      }
+    });
     scene.add(model);
 
     mixer = new THREE.AnimationMixer(model);
@@ -139,23 +209,81 @@ model_loader.load(
   }
 );
 
-const text_loader = new FontLoader();
-text_loader.load(
-  "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-  function (font) {
-    const textGeometry = new TextGeometry("ready!", {
-      font: font,
-      size: 1,
-      height: 0.2,
+function loadText(text, textSize, textHeight, textColor, textPosition) {
+  return new Promise((resolve, reject) => {
+    const text_loader = new FontLoader();
+    text_loader.load(
+      "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+      function (font) {
+        const textGeometry = new TextGeometry(text, {
+          font: font,
+          size: textSize,
+          depth: textHeight,
+        });
+
+        // Tính toán bounding box của geometry
+        textGeometry.computeBoundingBox();
+        const boundingBox = textGeometry.boundingBox;
+        const width = boundingBox.max.x - boundingBox.min.x;
+        const height = boundingBox.max.y - boundingBox.min.y;
+
+        const textMaterial = new THREE.MeshBasicMaterial({
+          color: textColor,
+        });
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+        // Đặt vị trí trung tâm
+        textMesh.position.set(
+          -width / 2 + textPosition.x,
+          -height / 2 + textPosition.y,
+          textPosition.z
+        );
+
+        resolve(textMesh); // Trả về textMesh sau khi tạo xong
+      },
+      undefined,
+      function (error) {
+        reject(`Loi tai font ${error}`); // Xử lý lỗi nếu tải font thất bại
+      }
+    );
+  });
+}
+
+async function loadReadyTexts() {
+  // Hàm fade out bên trong loadReadyTexts
+  async function fadeOutAndRemove(mesh, duration) {
+    return new Promise((resolve) => {
+      gsap.to(mesh.material, {
+        opacity: 0, // Đặt opacity về 0
+        duration: duration / 1000, // Thời gian thực hiện (tính bằng giây)
+        onComplete: () => {
+          scene.remove(mesh); // Xóa mesh khỏi scene sau khi fade-out xong
+          resolve(); // Kết thúc Promise
+        },
+      });
     });
-    const textMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-    });
-    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-    textMesh.position.set(0, 10, 480);
-    scene.add(textMesh);
   }
-);
+
+  let textMesh;
+  const textArray = [
+    { text: "Ready!", color: 0xffffff },
+    { text: "3", color: 0xff0000 },
+    { text: "2", color: 0xff0000 },
+    { text: "1", color: 0xff0000 },
+    { text: "Go!", color: 0x00ff00 },
+  ];
+
+  for (const { text, color } of textArray) {
+    console.log(`text: ${text}, color: ${color}`);
+    textMesh = await loadText(text, 2, 0.5, color, { x: 0, y: 5, z: 480 });
+    scene.add(textMesh);
+    console.log(`text mesh: ${textMesh}`);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await fadeOutAndRemove(textMesh, 200);
+  }
+  // Khi hiển thị xong tất cả text
+  gameAttribute.isPlayerReady = true;
+}
 
 //---background---
 const bg_loader = new GLTFLoader();
@@ -185,7 +313,7 @@ function loadTreeModel(modelPath, positionX, positionZ) {
     }
   );
 }
-     
+
 // Hàm chọn ngẫu nhiên bên trái hoặc phải và mô hình cây
 function getRandomSideAndModel() {
   const models = ["/GLB_Models/tree_1.glb", "/GLB_Models/tree_2.glb"];
@@ -203,27 +331,30 @@ for (let i = 0; i < 10; i++) {
   loadTreeModel(modelPath, positionX, positionZ);
 }
 
-// Load obstacles và coins 
+// Load obstacles và coins
 const obs_co_loader = new GLTFLoader();
 
 // Đường dẫn đến GLB folders
 const GLB_links = [
-  '/GLB_Models/car_1.glb',
-  '/GLB_Models/car_2.glb',
-  '/GLB_Models/car_3.glb',
-  '/GLB_Models/car_4.glb',
-  '/GLB_Models/coin.glb',
+  "/GLB_Models/car_1.glb",
+  "/GLB_Models/car_2.glb",
+  "/GLB_Models/car_3.glb",
+  "/GLB_Models/car_4.glb",
+  "/GLB_Models/coin.glb",
 ];
 
 function loadObsCoModel(GLB_links, positionX, positionZ, type) {
   return new Promise((resolve, reject) => {
     if (type === "obstacle") {
-      const filteredLinks = GLB_links.filter(link => type === "obstacle" ? link.includes('car') : link.includes('coin'));
+      const filteredLinks = GLB_links.filter((link) =>
+        type === "obstacle" ? link.includes("car") : link.includes("coin")
+      );
       if (filteredLinks.length === 0) {
         console.log(`Không tìm thấy mô hình cho ${type}.`);
         return null;
       }
-      const modelPath = filteredLinks[Math.floor(Math.random() * filteredLinks.length)];
+      const modelPath =
+        filteredLinks[Math.floor(Math.random() * filteredLinks.length)];
 
       obs_co_loader.load(
         modelPath,
@@ -233,7 +364,7 @@ function loadObsCoModel(GLB_links, positionX, positionZ, type) {
           console.log("Obstacle model loaded:", modelPath);
           obs.position.set(positionX, 0, positionZ);
           obs.scale.set(0.7, 0.7, 0.7);
-          obs.rotation.y = -Math.PI/2;
+          obs.rotation.y = -Math.PI / 2;
           scene.add(obs);
 
           // Tạo AnimationMixer nếu mô hình có animation
@@ -246,17 +377,23 @@ function loadObsCoModel(GLB_links, positionX, positionZ, type) {
           console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
         },
         (error) => {
-          console.error("An error occurred while loading the obstacle model:", error);
+          console.error(
+            "An error occurred while loading the obstacle model:",
+            error
+          );
           reject(error); // Trả về lỗi
         }
       );
     } else if (type === "coin") {
-      const filteredLinks = GLB_links.filter(link => type === "obstacle" ? link.includes("car") : link.includes("coin"));
+      const filteredLinks = GLB_links.filter((link) =>
+        type === "obstacle" ? link.includes("car") : link.includes("coin")
+      );
       if (filteredLinks.length === 0) {
         console.log(`Không tìm thấy mô hình cho ${type}.`);
         return null;
       }
-      const modelPath = filteredLinks[Math.floor(Math.random() * filteredLinks.length)];
+      const modelPath =
+        filteredLinks[Math.floor(Math.random() * filteredLinks.length)];
 
       obs_co_loader.load(
         modelPath,
@@ -266,7 +403,7 @@ function loadObsCoModel(GLB_links, positionX, positionZ, type) {
           console.log("Coin model loaded:", modelPath);
           co.position.set(positionX, 0.5, positionZ);
           co.scale.set(0.02, 0.02, 0.02);
-          co.rotation.x = Math.PI/2;
+          co.rotation.x = Math.PI / 2;
           scene.add(co);
 
           // Tạo AnimationMixer nếu mô hình có animation
@@ -279,7 +416,10 @@ function loadObsCoModel(GLB_links, positionX, positionZ, type) {
           console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
         },
         (error) => {
-          console.error("An error occurred while loading the coin model:", error);
+          console.error(
+            "An error occurred while loading the coin model:",
+            error
+          );
           reject(error); // Trả về lỗi
         }
       );
@@ -289,7 +429,14 @@ function loadObsCoModel(GLB_links, positionX, positionZ, type) {
   });
 }
 
-async function generateObjects(objectArray, count, minZ, maxZ, type, GLB_links) {
+async function generateObjects(
+  objectArray,
+  count,
+  minZ,
+  maxZ,
+  type,
+  GLB_links
+) {
   const segmentLength = (maxZ - minZ) / count; // Độ dài mỗi đoạn
   for (let i = 0; i < count; i++) {
     const lane = Math.floor(Math.random() * 3) - 1; // Chỉ định làn (-1, 0, 1)
@@ -299,14 +446,19 @@ async function generateObjects(objectArray, count, minZ, maxZ, type, GLB_links) 
 
     // Load mô hình GLB cho từng đối tượng
     try {
-      const object = await loadObsCoModel(GLB_links, positionX, zPosition, type);
+      const object = await loadObsCoModel(
+        GLB_links,
+        positionX,
+        zPosition,
+        type
+      );
       console.log(object);
       if (object) {
         scene.add(object); // Thêm đối tượng vào scene
         objectArray.push(object); // Đẩy đối tượng vào mảng
       }
     } catch (error) {
-      console.error('Lỗi khi tạo đối tượng:', error);
+      console.error("Lỗi khi tạo đối tượng:", error);
     }
 
     // Đảm bảo chướng ngại vật không chồng lên tiền vàng
@@ -331,12 +483,6 @@ generateObjects(coins, 30, -485, 485, "coin", GLB_links);
 // Tạo chướng ngại vật
 generateObjects(obstacles, 100, -485, 485, "obstacle", GLB_links);
 
-let cameraAttribute = {
-  initX: 0,
-  initY: 1,
-  initZ: 5,
-};
-
 // Camera cố định trục X, giữ nguyên vị trí trục Z
 camera.position.set(
   cameraAttribute.initX,
@@ -345,13 +491,6 @@ camera.position.set(
 );
 camera.lookAt(new THREE.Vector3(0, 0.5, 0));
 
-// Biến lưu điểm số
-let score = 0;
-// Biến lưu trạng thái game
-let isGameStarted = false; // Game đang chạy hay không
-let isPaused = false; // Game tạm dừng hay không
-let isGameOver = false;
-
 // Xử lý bàn phím
 const keys = { left: false, right: false, up: false };
 document.addEventListener("keydown", (event) => {
@@ -359,16 +498,16 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight") keys.right = true;
   if (event.key === "ArrowUp") keys.up = true;
   if (event.key === "Enter") {
-    if (!isGameStarted) {
-      isGameStarted = true; // Bắt đầu game nếu chưa bắt đầu
+    if (!gameAttribute.isGameStarted) {
+      gameAttribute.isGameStarted = true; // Bắt đầu game nếu chưa bắt đầu
       console.log("Game Start");
-    } else if (isPaused) {
-      isPaused = false; // Tiếp tục game nếu đang tạm dừng
+    } else if (gameAttribute.isPaused) {
+      gameAttribute.isPaused = false; // Tiếp tục game nếu đang tạm dừng
       console.log("Game Resumed");
     }
   }
-  if (event.code === "Space" && isGameStarted) {
-    isPaused = true; // Tạm dừng game
+  if (event.code === "Space" && gameAttribute.isGameStarted) {
+    gameAttribute.isPaused = true; // Tạm dừng game
     console.log("Game Paused");
   }
 });
@@ -385,31 +524,18 @@ function checkCollision(object1, object2) {
   return box1.intersectsBox(box2);
 }
 
-// Hàm di chuyển nhân vật giữa các làn
-const lanes = [-3.75, 0, 3.75]; // Các vị trí x của làn
-let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: phải)
-
 function movePlayer(moveSpeed) {
   model.position.x += moveSpeed;
   camera.position.x = model.position.x;
 }
 
-let playerAttribute = {
-  velocity: 0, // Vận tốc ban đầu (0 khi đứng yên)
-  isJumping: false, // Trạng thái nhảy
-  isMovingLeft: false,
-  isMovingRight: false,
-
-  gravity: -0.003, // Gia tốc trọng trường (âm vì vật rơi xuống)
-  moveSpeed: 0.15, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
-};
-
 // Vòng lặp render và cập nhật animation
 const clock = new THREE.Clock();
 
+let a = 0;
 // Animation loop
 function animate() {
-  if (!isGameStarted || isPaused) {
+  if (!gameAttribute.isGameStarted || gameAttribute.isPaused) {
     // Thay đổi offset theo thời gian (lặp lại)
     sky_texture.offset.x += 0.00001; // Điều chỉnh tốc độ
     sky_texture.offset.y += 0.000005; // Điều chỉnh tốc độ
@@ -417,10 +543,19 @@ function animate() {
     camera.position.z = model.position.z + 3;
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
+  } else if (!gameAttribute.isPlayerReady) {
+    if (!gameAttribute.isCountReady) {
+      a++;
+      console.log(`a: ${a}`);
+      loadReadyTexts();
+      gameAttribute.isCountReady = true;
+    }
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
   } else {
     sky_texture.offset.x += 0.00001; // Điều chỉnh tốc độ
     sky_texture.offset.y += 0.000005; // Điều chỉnh tốc độ
-    if (isGameOver) return; // Dừng game nếu trạng thái là kết thúc
+    if (gameAttribute.isGameOver) return; // Dừng game nếu trạng thái là kết thúc
 
     requestAnimationFrame(animate);
 
@@ -434,7 +569,7 @@ function animate() {
       model.position.z -= 0.1;
     } else {
       console.log("You reached the end of the road!");
-      isGameOver = true; // Dừng game khi đạt cuối đường
+      gameAttribute.isGameOver = true; // Dừng game khi đạt cuối đường
       return;
     }
 
@@ -501,9 +636,9 @@ function animate() {
     coins.forEach((coin, index) => {
       if (checkCollision(model, coin)) {
         scene.remove(coin);
-        coins.splice(index, 1); 
-        score += 10;
-        console.log("Score:", score);
+        coins.splice(index, 1);
+        gameAttribute.score += 10;
+        console.log("Score:", gameAttribute.score);
       }
     });
 
@@ -511,17 +646,87 @@ function animate() {
     obstacles.forEach((obstacle) => {
       if (checkCollision(model, obstacle)) {
         console.log("Game Over!");
-        isGameOver = true;
+        gameAttribute.isGameOver = true;
+        showGameOverMenu();
       }
     });
 
     renderer.render(scene, camera);
   }
 }
-
+setShadowsForAllObjects(scene);
 // Đảm bảo texture lặp lại
 sky_texture.wrapS = THREE.RepeatWrapping;
 sky_texture.wrapT = THREE.RepeatWrapping;
 sky_texture.repeat.set(0.5, 0.5);
 
 animate();
+
+function restartGame() {
+  // Đặt lại trạng thái game
+  gameAttribute.isGameStarted = false;
+  gameAttribute.isPaused = false;
+  gameAttribute.isGameOver = false;
+  gameAttribute.isCountReady = false;
+  gameAttribute.score = 0; // Đặt lại điểm số
+
+  // Đặt lại trạng thái nhân vật
+  model.position.set(0, 0, 497); // Đặt lại vị trí nhân vật
+  //model.rotation.set(0, 0, 0); // Đặt lại góc xoay nhân vật
+  playerAttribute.isJumping = false; // Đặt lại trạng thái nhảy
+  playerAttribute.isMovingLeft = false;
+  playerAttribute.isMovingRight = false;
+
+  // Xóa các vật thể (tiền vàng, chướng ngại vật) đã tạo
+  coins.forEach((coin) => scene.remove(coin));
+  obstacles.forEach((obstacle) => scene.remove(obstacle));
+
+  // Tạo lại các vật thể mới
+  coins.length = 0; // Xóa mảng coins
+  obstacles.length = 0; // Xóa mảng obstacles
+  generateObjects(coins, coinGeometry, coinMaterial, 30, -485, 485, "coin");
+  generateObjects(
+    obstacles,
+    obstacleGeometry,
+    obstacleMaterial,
+    100,
+    -485,
+    485,
+    "obstacle"
+  );
+
+  // Đặt lại camera
+  camera.position.set(
+    cameraAttribute.initX,
+    cameraAttribute.initY,
+    cameraAttribute.initZ
+  );
+  camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+
+  // Tiến hành reset GUI nếu cần
+  if (gui) {
+    gui.destroy();
+    gui = null;
+  }
+  animate();
+}
+
+// Hàm gọi khi game over
+function showGameOverMenu() {
+  // Tạo GUI để chọn Play Again hoặc Quit
+  gui = new dat.GUI();
+
+  menuOptions = {
+    "Play Again": () => {
+      console.log("Restarting game...");
+      restartGame();
+    },
+    Quit: () => {
+      console.log("Exiting game...");
+      //quitGame();
+    },
+  };
+
+  gui.add(menuOptions, "Play Again");
+  gui.add(menuOptions, "Quit");
+}
