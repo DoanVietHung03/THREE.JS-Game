@@ -111,13 +111,12 @@ for (let row = 0; row < finishLineLength / squareSize; row++) {
   }
 }
 
-
 // Tải mô hình .glb
 let model = new THREE.Object3D();
 let mixer; // AnimationMixer
 const model_loader = new GLTFLoader();
 model_loader.load(
-  "/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
+  "GLB_Models/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
   (gltf) => {
     model.add(gltf.scene);
     console.log("Model loaded:", model);
@@ -157,6 +156,52 @@ text_loader.load(
     scene.add(textMesh);
   }
 );
+
+//---background---
+const bg_loader = new GLTFLoader();
+let mixers = [];
+
+// Hàm tải mô hình cây
+function loadTreeModel(modelPath, positionX, positionZ) {
+  let tree = new THREE.Object3D();
+  bg_loader.load(
+    modelPath,
+    (gltf) => {
+      tree.add(gltf.scene);
+      console.log("Model loaded:", modelPath);
+      tree.position.set(positionX, 0, positionZ); // Đặt vị trí cây
+      tree.scale.set(0.7, 0.7, 0.7);
+      scene.add(tree);
+
+      // Tạo AnimationMixer nếu mô hình có animation
+      let mixer = new THREE.AnimationMixer(gltf.scene);
+      mixers.push(mixer);
+    },
+    (xhr) => {
+      console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+    },
+    (error) => {
+      console.error("An error occurred while loading the model:", error);
+    }
+  );
+}
+
+// Hàm chọn ngẫu nhiên bên trái hoặc phải và mô hình cây
+function getRandomSideAndModel() {
+  const models = ["/GLB_Models/tree_1.glb", "/GLB_Models/tree_2.glb"];
+  const randomModel = models[Math.floor(Math.random() * models.length)];
+  const randomSide = Math.random() > 0.5 ? "left" : "right";
+
+  const positionX = randomSide === "left" ? -10 : 10; // Bên trái: -10, bên phải: 10
+  const positionZ = Math.random() * 500; // Ngẫu nhiên trên trục Z
+  return { modelPath: randomModel, positionX, positionZ };
+}
+
+// Tải 10 mô hình xen kẽ ngẫu nhiên
+for (let i = 0; i < 10; i++) {
+  const { modelPath, positionX, positionZ } = getRandomSideAndModel();
+  loadTreeModel(modelPath, positionX, positionZ);
+}
 
 // Hàm tạo ngẫu nhiên vị trí các vật thể
 function generateObjects(
@@ -389,7 +434,7 @@ function animate() {
     coins.forEach((coin, index) => {
       if (checkCollision(model, coin)) {
         scene.remove(coin);
-        coins.splice(index, 1);
+        coins.splice(index, 1); 
         score += 10;
         console.log("Score:", score);
       }
