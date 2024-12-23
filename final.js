@@ -298,10 +298,15 @@ async function generateObjects(objectArray, count, minZ, maxZ, type, GLB_links) 
     const positionX = lane * 3.75; // Xác định vị trí X dựa trên làn chạy
 
     // Load mô hình GLB cho từng đối tượng
-    const object = await loadObsCoModel(GLB_links, positionX, zPosition, type);
-    if (object) {
-      scene.add(object); // Thêm đối tượng vào scene
-      objectArray.push(object); // Đẩy đối tượng vào mảng
+    try {
+      const object = await loadObsCoModel(GLB_links, positionX, zPosition, type);
+      console.log(object);
+      if (object) {
+        scene.add(object); // Thêm đối tượng vào scene
+        objectArray.push(object); // Đẩy đối tượng vào mảng
+      }
+    } catch (error) {
+      console.error('Lỗi khi tạo đối tượng:', error);
     }
 
     // Đảm bảo chướng ngại vật không chồng lên tiền vàng
