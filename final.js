@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { Howl } from "howler";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
@@ -34,6 +35,35 @@ let gameAttribute = {
 const lanes = [-3.75, 0, 3.75]; // Các vị trí x của làn
 let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: phải)
 let gui, menuOptions;
+//------Nhạc nền------
+// Tạo đối tượng âm thanh
+const bg_sound = new Howl({
+  src: ['/sound/bg_music.mp3'],  // Đường dẫn đến file âm thanh
+  volume: 0.5,              // Âm lượng
+  loop: true                // Lặp lại âm thanh
+});
+
+// Phát âm thanh
+bg_sound.play();
+
+//-------các âm thanh va chạm-------
+function playSoundForDuration(src, duration = 2000) {
+  const sound = new Howl({
+      src: [src],
+      volume: 0.5,  // Điều chỉnh âm lượng (có thể thay đổi theo nhu cầu)
+  });
+
+  // Phát âm thanh
+  sound.play();
+
+  // Dừng âm thanh sau khoảng thời gian (mặc định là 2 giây)
+  setTimeout(() => {
+      sound.stop();  // Dừng âm thanh sau thời gian đã chỉ định
+      console.log(`Âm thanh đã dừng sau ${duration / 1000} giây.`);
+  }, duration);  // duration là thời gian dừng (tính bằng ms)
+}
+
+
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -576,6 +606,7 @@ function animate() {
     // Điều khiển nhân vật
     if (keys.left && !playerAttribute.isMovingRight) {
       if (!playerAttribute.isMovingLeft && currentLane > 0) {
+        playSoundForDuration("/sound/jump_effect.mp3");
         currentLane--;
         playerAttribute.isMovingLeft = true;
       }
@@ -612,6 +643,7 @@ function animate() {
     }
 
     if (keys.up && !playerAttribute.isJumping && model.position.y === 0) {
+      playSoundForDuration("/sound/jump_effect.mp3");
       playerAttribute.isJumping = true; // Đánh dấu là đang nhảy
       playerAttribute.velocity = playerAttribute.moveSpeed; // Đặt vận tốc ban đầu khi nhảy
     }
@@ -639,6 +671,8 @@ function animate() {
         coins.splice(index, 1);
         gameAttribute.score += 10;
         console.log("Score:", gameAttribute.score);
+        coins.splice(index, 1); 
+        playSoundForDuration('/sound/coin_effect.mp3');
       }
     });
 
@@ -646,8 +680,12 @@ function animate() {
     obstacles.forEach((obstacle) => {
       if (checkCollision(model, obstacle)) {
         console.log("Game Over!");
+        bg_sound.stop();
+        playSoundForDuration('/sound/die_sound.mp3', 3000);
+        console.log("sound");
         gameAttribute.isGameOver = true;
         showGameOverMenu();
+        isGameOver = true;
       }
     });
 
