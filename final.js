@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { Howl } from "howler";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { gsap } from "gsap";
@@ -13,8 +13,8 @@ let playerAttribute = {
   isMovingLeft: false,
   isMovingRight: false,
 
-  gravity: -0.003, // Gia tốc trọng trường (âm vì vật rơi xuống)
-  moveSpeed: 0.15, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
+  gravity: -0.005, // Gia tốc trọng trường (âm vì vật rơi xuống)
+  moveSpeed: 0.17, // Sức mạnh của cú nhảy (vận tốc ban đầu khi nhảy)
 };
 let cameraAttribute = {
   initX: 0,
@@ -31,10 +31,12 @@ let gameAttribute = {
   isGameOver: false,
   isCountReady: false,
 };
+
 // Hàm di chuyển nhân vật giữa các làn
 const lanes = [-3.75, 0, 3.75]; // Các vị trí x của làn
 let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: phải)
 let gui, menuOptions;
+
 //------Nhạc nền------
 // Tạo đối tượng âm thanh
 const bg_sound = new Howl({
@@ -78,7 +80,7 @@ renderer.shadowMapSoft = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-const controls = new OrbitControls(camera, renderer.domElement);
+// const controls = new OrbitControls(camera, renderer.domElement);
 
 const loader = new THREE.TextureLoader();
 const sky_texture = loader.load("texture/sky.jpg");
@@ -152,7 +154,7 @@ for (let i = -2.5; i <= 2.5; i += 2.5) {
   if (i == 0) {
     continue;
   } else {
-    for (let z = 496; z > -496; z -= 5) {
+    for (let z = 496; z > -494; z -= 5) {
       const LineGeometry = new THREE.PlaneGeometry(0.5, 3);
       const Line = new THREE.Mesh(LineGeometry, LineMaterial);
       Line.rotation.x = -Math.PI / 2;
@@ -168,7 +170,7 @@ const startLineGeometry = new THREE.PlaneGeometry(10, 1); // Vạch rộng 20, d
 const startLineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const startLine = new THREE.Mesh(startLineGeometry, startLineMaterial);
 startLine.rotation.x = -Math.PI / 2; // Đặt nằm ngang
-startLine.position.set(0, 0.01, 496); // Đặt ở đầu đường đua
+startLine.position.set(0, 0.01, 497); // Đặt ở đầu đường đua
 scene.add(startLine);
 
 // Vạch đích (cờ caro)
@@ -202,7 +204,7 @@ for (let row = 0; row < finishLineLength / squareSize; row++) {
   }
 }
 
-// Tải mô hình .glb
+// Tải nhân vật
 let model = new THREE.Object3D();
 
 let mixer; // AnimationMixer
@@ -326,7 +328,6 @@ function loadTreeModel(modelPath, positionX, positionZ) {
     modelPath,
     (gltf) => {
       tree.add(gltf.scene);
-      // console.log("Model loaded:", modelPath);
       tree.position.set(positionX, 0, positionZ); // Đặt vị trí cây
       tree.scale.set(0.7, 0.7, 0.7);
       scene.add(tree);
@@ -348,15 +349,25 @@ function loadTreeModel(modelPath, positionX, positionZ) {
 function getRandomSideAndModel() {
   const models = ["/GLB_Models/tree_1.glb", "/GLB_Models/tree_2.glb"];
   const randomModel = models[Math.floor(Math.random() * models.length)];
-  const randomSide = Math.random() > 0.5 ? "left" : "right";
+  let positionX, positionZ;
 
-  const positionX = randomSide === "left" ? -10 : 10; // Bên trái: -10, bên phải: 10
-  const positionZ = Math.random() * 500; // Ngẫu nhiên trên trục Z
+  // Vùng cấm (vị trí đường)
+  const roadWidth = 10; // Chiều rộng đường (tính từ tâm)
+  const roadLength = 1000; // Chiều dài đường
+  const roadCenterZ = 0; // Tâm đường theo trục Z
+
+  // Đặt cây ở vùng nằm ngoài đường
+  do {
+    positionX = Math.random() * 70 - 50; // Ngẫu nhiên từ -50 đến 50 trên trục X
+    positionZ = Math.random() * 1000 - 250; // Ngẫu nhiên từ -250 đến 250 trên trục Z
+  } while (Math.abs(positionX) < roadWidth / 2 && // Tránh vùng đường trên trục X
+           positionZ > roadCenterZ - roadLength / 2 && 
+           positionZ < roadCenterZ + roadLength / 2); // Tránh vùng đường trên trục Z
   return { modelPath: randomModel, positionX, positionZ };
 }
 
-// Tải 10 mô hình xen kẽ ngẫu nhiên
-for (let i = 0; i < 10; i++) {
+// Tải mô hình xen kẽ ngẫu nhiên
+for (let i = 0; i < 100; i++) {
   const { modelPath, positionX, positionZ } = getRandomSideAndModel();
   loadTreeModel(modelPath, positionX, positionZ);
 }
@@ -366,7 +377,7 @@ const obs_co_loader = new GLTFLoader();
 
 // Đường dẫn đến GLB folders
 const GLB_links = [
-  "/GLB_Models/car_1.glb",
+  // "/GLB_Models/car_1.glb",
   "/GLB_Models/car_2.glb",
   "/GLB_Models/car_3.glb",
   "/GLB_Models/car_4.glb",
@@ -459,29 +470,29 @@ function loadObsCoModel(GLB_links, positionX, positionZ, type) {
   });
 }
 
-async function generateObjects(
-  objectArray,
-  count,
-  minZ,
-  maxZ,
-  type,
-  GLB_links
-) {
+async function generateObjects(objectArray, count, minZ, maxZ, type, GLB_links) {
   const segmentLength = (maxZ - minZ) / count; // Độ dài mỗi đoạn
   for (let i = 0; i < count; i++) {
     const lane = Math.floor(Math.random() * 3) - 1; // Chỉ định làn (-1, 0, 1)
-    const zPosition =
-      maxZ - i * segmentLength - (Math.random() * segmentLength) / 2;
+    const zPosition = maxZ - i * segmentLength - (Math.random() * segmentLength) / 2;
     const positionX = lane * 3.75; // Xác định vị trí X dựa trên làn chạy
 
+    // Đảm bảo chướng ngại vật không chồng lên tiền vàng
+    if (type === "obstacle") {
+      const isColliding = coins.some((coin) => {
+        const coinBox = new THREE.Box3().setFromObject(coin);
+        const obstacleBox = new THREE.Box3().setFromCenterAndSize(
+          new THREE.Vector3(positionX, 0, zPosition),
+          new THREE.Vector3(1, 1, 1) // Kích thước mặc định của chướng ngại vật
+        );
+        return coinBox.intersectsBox(obstacleBox);
+      });
+      if (isColliding) continue; // Bỏ qua nếu có va chạm
+    }
+    
     // Load mô hình GLB cho từng đối tượng
     try {
-      const object = await loadObsCoModel(
-        GLB_links,
-        positionX,
-        zPosition,
-        type
-      );
+      const object = await loadObsCoModel(GLB_links, positionX, zPosition, type);
       console.log(object);
       if (object) {
         scene.add(object); // Thêm đối tượng vào scene
@@ -489,17 +500,6 @@ async function generateObjects(
       }
     } catch (error) {
       console.error("Lỗi khi tạo đối tượng:", error);
-    }
-
-    // Đảm bảo chướng ngại vật không chồng lên tiền vàng
-    if (type === "obstacle") {
-      const isColliding = coins.some((coin) => {
-        return (
-          Math.abs(coin.position.z - zPosition) < 5 &&
-          Math.abs(coin.position.x - positionX) < 1
-        );
-      });
-      if (isColliding) continue; // Bỏ qua nếu có va chạm
     }
   }
 }
@@ -596,7 +596,7 @@ function animate() {
 
     // Nhân vật chạy về phía trước
     if (model.position.z > -495) {
-      model.position.z -= 0.1;
+      model.position.z -= 0.2;
     } else {
       console.log("You reached the end of the road!");
       gameAttribute.isGameOver = true; // Dừng game khi đạt cuối đường
@@ -607,6 +607,7 @@ function animate() {
     if (keys.left && !playerAttribute.isMovingRight) {
       if (!playerAttribute.isMovingLeft && currentLane > 0) {
         playSoundForDuration("/sound/jump_effect.mp3");
+        model.rotation.z = Math.PI/4;
         currentLane--;
         playerAttribute.isMovingLeft = true;
       }
@@ -619,12 +620,15 @@ function animate() {
       if (model.position.x < lanes[currentLane]) {
         model.position.x = lanes[currentLane];
         camera.position.x = model.position.x;
+        model.rotation.z = 0;
         playerAttribute.isMovingLeft = false;
         keys.left = false;
       }
     }
     if (keys.right && !playerAttribute.isMovingLeft) {
       if (!playerAttribute.isMovingRight && currentLane < lanes.length - 1) {
+        playSoundForDuration("/sound/jump_effect.mp3");
+        model.rotation.z = -Math.PI/4;
         currentLane++;
         playerAttribute.isMovingRight = true;
       }
@@ -637,6 +641,7 @@ function animate() {
       if (model.position.x > lanes[currentLane]) {
         model.position.x = lanes[currentLane];
         camera.position.x = model.position.x;
+        model.rotation.z = 0;
         playerAttribute.isMovingRight = false;
         keys.right = false;
       }
@@ -671,7 +676,6 @@ function animate() {
         coins.splice(index, 1);
         gameAttribute.score += 10;
         console.log("Score:", gameAttribute.score);
-        coins.splice(index, 1); 
         playSoundForDuration('/sound/coin_effect.mp3');
       }
     });
@@ -685,7 +689,6 @@ function animate() {
         console.log("sound");
         gameAttribute.isGameOver = true;
         showGameOverMenu();
-        isGameOver = true;
       }
     });
 
