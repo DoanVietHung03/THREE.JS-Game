@@ -3,6 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <title>FINAL</title>
+    <!-- Liên kết đến tệp CSS -->
+    <link href="final.css" rel="stylesheet">
     <style>
       body {
         margin: 0;
@@ -13,6 +15,24 @@
     </style>
   </head>
   <body>
+    <!-- Container cho Game Over menu -->
+      <div id="gameOverMenu" class="hidden">
+        <div class="menu">
+          <h1>Game Over</h1>
+          <button id="playAgainBtn">Play Again</button>
+          <button id="quitBtn">Quit</button>
+        </div>
+      </div>
+    <!--Score table-->
+    <div id="scoreboard" class="container">
+      <h2>Game Score</h2>
+      <div>
+        <span class="score-label">Current Score: </span>
+        <span id="currentScore" class="score-value">0</span>
+      </div>
+      <div>
+        <span class="score-label">High Score: </span>
+        <span id="highScore" class="score-value">0</span>
     <script type="module" src="/final.js"></script>
     <script type="text/javascript" src="js/three.js"></script>
   </body>

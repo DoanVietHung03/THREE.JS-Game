@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { Frustum, Matrix4 } from 'three';
 import { Howl } from "howler";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -24,6 +25,7 @@ let cameraAttribute = {
 let gameAttribute = {
   isPlayerReady: false,
   // Biến lưu điểm số
+  highscore: 0,
   score: 0,
   // Biến lưu trạng thái game
   isGameStarted: false, // Game đang chạy hay không
@@ -31,10 +33,19 @@ let gameAttribute = {
   isGameOver: false,
   isCountReady: false,
 };
+
+
+function updateScoreDisplay() {
+  document.getElementById('currentScore').textContent = gameAttribute.score;
+  document.getElementById('highScore').textContent = gameAttribute.highscore;
+}
+
+
 // Hàm di chuyển nhân vật giữa các làn
 const lanes = [-3.75, 0, 3.75]; // Các vị trí x của làn
 let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: phải)
 let gui, menuOptions;
+
 //------Nhạc nền------
 // Tạo đối tượng âm thanh
 const bg_sound = new Howl({
@@ -66,19 +77,26 @@ function playSoundForDuration(src, duration = 2000) {
 
 // Khởi tạo scene, camera và renderer
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
+const mainCamera = new THREE.PerspectiveCamera(
+  50,
   window.innerWidth / window.innerHeight,
   0.1,
-  1000
+  50
 );
+// const secondCamera = new THREE.PerspectiveCamera(
+//   75,
+//   window.innerWidth / window.innerHeight,
+//   0.5,
+//   100
+// );
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.shadowMap.enabled = true;
 renderer.shadowMapSoft = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(mainCamera, renderer.domElement);
 
 const loader = new THREE.TextureLoader();
 const sky_texture = loader.load("texture/sky.jpg");
@@ -315,21 +333,69 @@ async function loadReadyTexts() {
   gameAttribute.isPlayerReady = true;
 }
 
-//---background---
+// //---background---
+// const bg_loader = new GLTFLoader();
+// let mixers = [];
+
+// // Hàm tải mô hình cây
+// function loadTreeModel(modelPath, positionX, positionZ) {
+//   let tree = new THREE.Object3D();
+//   bg_loader.load(
+//     modelPath,
+//     (gltf) => {
+//       tree.add(gltf.scene);
+//       // console.log("Model loaded:", modelPath);
+//       tree.position.set(positionX, 0, positionZ); // Đặt vị trí cây
+//       tree.scale.set(0.7, 0.7, 0.7);
+//       scene.add(tree);
+
+//       // Tạo AnimationMixer nếu mô hình có animation
+//       let mixer = new THREE.AnimationMixer(gltf.scene);
+//       mixers.push(mixer);
+//     },
+//     (xhr) => {
+//       console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+//     },
+//     (error) => {
+//       console.error("An error occurred while loading the model:", error);
+//     }
+//   );
+// }
+
+// // Hàm chọn ngẫu nhiên bên trái hoặc phải và mô hình cây
+// function getRandomSideAndModel() {
+//   const models = ["/GLB_Models/tree_1.glb", "/GLB_Models/tree_2.glb"];
+//   const randomModel = models[Math.floor(Math.random() * models.length)];
+//   const randomSide = Math.random() > 0.5 ? "left" : "right";
+
+//   const positionX = randomSide === "left" ? -10 : 10; // Bên trái: -10, bên phải: 10
+//   const positionZ = Math.random() * 500; // Ngẫu nhiên trên trục Z
+//   return { modelPath: randomModel, positionX, positionZ };
+// }
+
+// // Tải 10 mô hình xen kẽ ngẫu nhiên
+// for (let i = 0; i < 10; i++) {
+//   const { modelPath, positionX, positionZ } = getRandomSideAndModel();
+//   loadTreeModel(modelPath, positionX, positionZ);
+// }
+
 const bg_loader = new GLTFLoader();
 let mixers = [];
+let loadedModels = {}; // Lưu trữ mô hình đã tải
 
 // Hàm tải mô hình cây
 function loadTreeModel(modelPath, positionX, positionZ) {
-  let tree = new THREE.Object3D();
+  // Kiểm tra nếu mô hình đã được tải trước đó
+  if (loadedModels[modelPath]) {
+    createTreeFromExistingModel(loadedModels[modelPath], positionX, positionZ);
+    return;
+  }
+
   bg_loader.load(
     modelPath,
     (gltf) => {
-      tree.add(gltf.scene);
-      // console.log("Model loaded:", modelPath);
-      tree.position.set(positionX, 0, positionZ); // Đặt vị trí cây
-      tree.scale.set(0.7, 0.7, 0.7);
-      scene.add(tree);
+      loadedModels[modelPath] = gltf.scene; // Lưu mô hình đã tải
+      createTreeFromExistingModel(gltf.scene, positionX, positionZ);
 
       // Tạo AnimationMixer nếu mô hình có animation
       let mixer = new THREE.AnimationMixer(gltf.scene);
@@ -344,6 +410,15 @@ function loadTreeModel(modelPath, positionX, positionZ) {
   );
 }
 
+// Hàm tạo cây từ mô hình đã tải
+function createTreeFromExistingModel(model, positionX, positionZ) {
+  let tree = new THREE.Object3D();
+  tree.add(model.clone()); // Dùng bản sao của mô hình để thêm vào scene
+  tree.position.set(positionX, 0, positionZ);
+  tree.scale.set(0.7, 0.7, 0.7);
+  scene.add(tree);
+}
+
 // Hàm chọn ngẫu nhiên bên trái hoặc phải và mô hình cây
 function getRandomSideAndModel() {
   const models = ["/GLB_Models/tree_1.glb", "/GLB_Models/tree_2.glb"];
@@ -356,7 +431,7 @@ function getRandomSideAndModel() {
 }
 
 // Tải 10 mô hình xen kẽ ngẫu nhiên
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 300; i++) {
   const { modelPath, positionX, positionZ } = getRandomSideAndModel();
   loadTreeModel(modelPath, positionX, positionZ);
 }
@@ -514,12 +589,15 @@ generateObjects(coins, 30, -485, 485, "coin", GLB_links);
 generateObjects(obstacles, 100, -485, 485, "obstacle", GLB_links);
 
 // Camera cố định trục X, giữ nguyên vị trí trục Z
-camera.position.set(
+mainCamera.position.set(
   cameraAttribute.initX,
   cameraAttribute.initY,
   cameraAttribute.initZ
 );
-camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+mainCamera.lookAt(new THREE.Vector3(0, 0.5, 0));
+
+// secondCamera.position.set( cameraAttribute.initX, cameraAttribute.initY, cameraAttribute.initZ - 5 );
+// secondCamera.lookAt(0, 0, 0);
 
 // Xử lý bàn phím
 const keys = { left: false, right: false, up: false };
@@ -559,6 +637,61 @@ function movePlayer(moveSpeed) {
   camera.position.x = model.position.x;
 }
 
+// Tối ưu hóa: Frustum và ma trận camera
+const frustum = new THREE.Frustum();
+const cameraViewProjectionMatrix = new THREE.Matrix4();
+
+// Cập nhật frustum dựa trên camera
+function updateFrustum(camera) {
+  camera.updateMatrixWorld(); // Cập nhật ma trận thế giới của camera
+  cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  frustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
+}
+
+// // Hàm xóa đối tượng GLB khỏi scene
+// function removeGLBModel(model) {
+//   if (model && model.parent) {
+//       model.parent.remove(model);  // Xóa model khỏi parent (scene)
+//       console.log("Model removed from the scene");
+
+//       // Giải phóng bộ nhớ nếu cần thiết
+//       if (model.geometry) {
+//           model.geometry.dispose();  // Giải phóng geometry
+//       }
+//       if (model.material) {
+//           model.material.dispose();  // Giải phóng material
+//       }
+//   } else {
+//       console.error("Model not found or does not have a parent.");
+//   }
+// }
+
+// // Hàm quản lý các đối tượng trong scene
+// function manageObjects(scene, mainCamera, secondCamera) {
+//   // Cập nhật frustum của camera chính
+//   updateFrustum(mainCamera);
+
+//   scene.children.forEach((object) => {
+//       if (object instanceof THREE.Mesh) {
+//           // Kiểm tra xem vật thể có nằm trong camera chính không
+//           if (!frustum.intersectsObject(object)) {
+//               removeGLBModel(object);  // Xóa đối tượng nếu nó không nằm trong tầm nhìn của camera
+//               console.log(`${object.name} không nằm trong tầm nhìn của camera chính`);
+//           }
+//       }
+//   });
+// }
+
+// // Đổi camera giữa camera chính và camera phụ khi nhấn '1'
+// let currentCamera = mainCamera;
+// window.addEventListener('keydown', (event) => {
+//   if (event.key === '1') { // Nhấn '1' để chuyển đổi camera
+//       currentCamera = (currentCamera === mainCamera) ? secondCamera : mainCamera;
+//       console.log(`Chuyển sang camera: ${currentCamera === mainCamera ? 'Main Camera' : 'Second Camera'}`);
+//   }
+// });
+
+
 // Vòng lặp render và cập nhật animation
 const clock = new THREE.Clock();
 
@@ -570,9 +703,13 @@ function animate() {
     sky_texture.offset.x += 0.00001; // Điều chỉnh tốc độ
     sky_texture.offset.y += 0.000005; // Điều chỉnh tốc độ
     // Nếu game chưa bắt đầu hoặc đang tạm dừng, chỉ render cảnh mà không di chuyển
-    camera.position.z = model.position.z + 3;
+    mainCamera.position.z = model.position.z + 3;
     requestAnimationFrame(animate);
-    renderer.render(scene, camera);
+    renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    renderer.render(scene, mainCamera);
+    
+    // // Kiểm tra vật thể ngoài tầm nhìn với camera phụ
+    // manageObjects(scene, mainCamera, secondCamera);
   } else if (!gameAttribute.isPlayerReady) {
     if (!gameAttribute.isCountReady) {
       a++;
@@ -581,13 +718,19 @@ function animate() {
       gameAttribute.isCountReady = true;
     }
     requestAnimationFrame(animate);
-    renderer.render(scene, camera);
+    renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    renderer.render(scene, mainCamera);
+    
+    // Kiểm tra vật thể ngoài tầm nhìn với camera phụ
+    // manageObjects(scene, mainCamera, secondCamera);
   } else {
     sky_texture.offset.x += 0.00001; // Điều chỉnh tốc độ
     sky_texture.offset.y += 0.000005; // Điều chỉnh tốc độ
     if (gameAttribute.isGameOver) return; // Dừng game nếu trạng thái là kết thúc
 
     requestAnimationFrame(animate);
+    renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    renderer.render(scene, mainCamera);
 
     // Cập nhật mixer, tạo animation cho model (đom đóm đập cánhcánh)
     if (mixer) {
@@ -618,7 +761,7 @@ function animate() {
       //Kiểm tra dừng
       if (model.position.x < lanes[currentLane]) {
         model.position.x = lanes[currentLane];
-        camera.position.x = model.position.x;
+        mainCamera.position.x = model.position.x;
         playerAttribute.isMovingLeft = false;
         keys.left = false;
       }
@@ -636,7 +779,7 @@ function animate() {
       //Kiểm tra dừng
       if (model.position.x > lanes[currentLane]) {
         model.position.x = lanes[currentLane];
-        camera.position.x = model.position.x;
+        mainCamera.position.x = model.position.x;
         playerAttribute.isMovingRight = false;
         keys.right = false;
       }
@@ -652,7 +795,7 @@ function animate() {
       playerAttribute.velocity += playerAttribute.gravity; // Áp dụng lực hấp dẫn
 
       model.position.y += playerAttribute.velocity; // Cập nhật vị trí của đối tượng
-      camera.position.y = model.position.y + cameraAttribute.initY;
+      mainCamera.position.y = model.position.y + cameraAttribute.initY;
       // Kiểm tra khi đối tượng chạm đất
       if (model.position.y <= 0) {
         model.position.y = 0; // Đảm bảo đối tượng không đi dưới mặt đất
@@ -662,7 +805,7 @@ function animate() {
     }
 
     // Cập nhật vị trí camera theo trục Z
-    camera.position.z = model.position.z + 3;
+    mainCamera.position.z = model.position.z + 3;
 
     // Kiểm tra va chạm với tiền vàng
     coins.forEach((coin, index) => {
@@ -670,7 +813,10 @@ function animate() {
         scene.remove(coin);
         coins.splice(index, 1);
         gameAttribute.score += 10;
-        console.log("Score:", gameAttribute.score);
+        if(gameAttribute.score >= gameAttribute.highscore){
+          gameAttribute.highscore = gameAttribute.score;
+        }
+        updateScoreDisplay();
         coins.splice(index, 1); 
         playSoundForDuration('/sound/coin_effect.mp3');
       }
@@ -688,8 +834,10 @@ function animate() {
         isGameOver = true;
       }
     });
-
-    renderer.render(scene, camera);
+    // // Xóa các đối tượng ngoài camera view
+    // cullObjects(scene, mainCamera);
+    // console.log("Deleted");
+    renderer.render(scene, currentCamera);
   }
 }
 setShadowsForAllObjects(scene);
@@ -699,6 +847,7 @@ sky_texture.wrapT = THREE.RepeatWrapping;
 sky_texture.repeat.set(0.5, 0.5);
 
 animate();
+
 
 function restartGame() {
   // Đặt lại trạng thái game
@@ -734,37 +883,119 @@ function restartGame() {
   );
 
   // Đặt lại camera
-  camera.position.set(
+  mainCamera.position.set(
     cameraAttribute.initX,
     cameraAttribute.initY,
     cameraAttribute.initZ
   );
-  camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+  mainCamera.lookAt(new THREE.Vector3(0, 0.5, 0));
 
-  // Tiến hành reset GUI nếu cần
-  if (gui) {
-    gui.destroy();
-    gui = null;
-  }
+  // // Tiến hành reset GUI nếu cần
+  // if (gui) {
+  //   gui.destroy();
+  //   gui = null;
+  // }
   animate();
 }
 
-// Hàm gọi khi game over
+// // Hàm gọi khi game over
+// function showGameOverMenu() {
+//   // Tạo GUI để chọn Play Again hoặc Quit
+//   gui = new dat.GUI();
+
+//   menuOptions = {
+//     "Play Again": () => {
+//       console.log("Restarting game...");
+//       // restartGame();
+//     },
+//     Quit: () => {
+//       console.log("Exiting game...");
+//       //quitGame();
+//     },
+//   };
+
+//   gui.add(menuOptions, "Play Again");
+//   gui.add(menuOptions, "Quit");
+// }
+
+
+// Hàm hiển thị menu Game Over
 function showGameOverMenu() {
-  // Tạo GUI để chọn Play Again hoặc Quit
-  gui = new dat.GUI();
+  const gameOverMenu = document.getElementById('gameOverMenu');
+  gameOverMenu.classList.remove('hidden'); // Hiển thị menu
 
-  menuOptions = {
-    "Play Again": () => {
-      console.log("Restarting game...");
-      restartGame();
-    },
-    Quit: () => {
-      console.log("Exiting game...");
-      //quitGame();
-    },
-  };
+  // Xử lý các sự kiện của nút
+  if(document.getElementById('playAgainBtn').addEventListener('click')){
 
-  gui.add(menuOptions, "Play Again");
-  gui.add(menuOptions, "Quit");
+    hideGameOverMenu();
+    // restartGame(); // Gọi hàm khởi động lại game
+  }
+
+  // Xử lý các sự kiện của nút
+  else if(document.getElementById('quitBtn').addEventListener('click')){
+
+    hideGameOverMenu();
+      // restartGame(); // Gọi hàm khởi động lại game
+  }
 }
+
+// Hàm ẩn menu Game Over
+function hideGameOverMenu() {
+  const gameOverMenu = document.getElementById('gameOverMenu');
+  gameOverMenu.classList.add('hidden'); // Ẩn menu
+  console.log("Ẩn");
+}
+
+function musicSetting(){
+  const bg_music = document.getElementById('bgMusic');
+  const ac_music = document.getElementById('acMusic');
+
+  if(document.getElementById('bgMusic').addEventListener('click')){
+    
+  }
+}
+
+// //-------Setting âm thanh------
+// function setupMusicControls() {
+//   // Lấy các phần tử DOM
+//   const bgMusic = document.getElementById('backgroundMusic');
+//   const actionMusic = document.getElementById('actionMusic');
+//   const toggleBgBtn = document.getElementById('toggleBgMusic');
+//   const toggleActionBtn = document.getElementById('toggleActionMusic');
+//   const bgVolumeControl = document.getElementById('bgMusicVolume');
+//   const actionVolumeControl = document.getElementById('actionMusicVolume');
+
+//   // Bật/tắt nhạc nền
+//   toggleBgBtn.addEventListener('click', () => {
+//       if (bgMusic.paused) {
+//           bgMusic.play();
+//           toggleBgBtn.textContent = 'Pause Background Music';
+//       } else {
+//           bgMusic.pause();
+//           toggleBgBtn.textContent = 'Play Background Music';
+//       }
+//   });
+
+//   // Bật/tắt nhạc hành động
+//   toggleActionBtn.addEventListener('click', () => {
+//       if (actionMusic.paused) {
+//           actionMusic.play();
+//           toggleActionBtn.textContent = 'Pause Action Music';
+//       } else {
+//           actionMusic.pause();
+//           toggleActionBtn.textContent = 'Play Action Music';
+//       }
+//   });
+
+//   // Điều chỉnh âm lượng nhạc nền
+//   bgVolumeControl.addEventListener('input', (event) => {
+//       bgMusic.volume = event.target.value / 100; // Giá trị từ 0.0 đến 1.0
+//   });
+
+//   // Điều chỉnh âm lượng nhạc hành động
+//   actionVolumeControl.addEventListener('input', (event) => {
+//       actionMusic.volume = event.target.value / 100; // Giá trị từ 0.0 đến 1.0
+//   });
+// }
+
+
