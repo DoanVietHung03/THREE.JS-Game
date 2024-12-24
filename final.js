@@ -81,60 +81,102 @@ scene.add(...finishLine);
 scene.add(model);
 
 //---background---
-const bg_loader = new GLTFLoader();
-let mixers = [];
+const tree_loader = new GLTFLoader();
 
 // Hàm tải mô hình cây
-function loadTreeModel(modelPath, positionX, positionZ) {
-  let tree = new THREE.Object3D();
-  bg_loader.load(
-    modelPath,
-    (gltf) => {
-      tree.add(gltf.scene);
-      tree.position.set(positionX, 0, positionZ); // Đặt vị trí cây
-      tree.scale.set(0.7, 0.7, 0.7);
-      scene.add(tree);
+const TreeCache = [];
 
-      // Tạo AnimationMixer nếu mô hình có animation
-      let mixer = new THREE.AnimationMixer(gltf.scene);
-      mixers.push(mixer);
-    },
-    (xhr) => {
-      console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-    },
-    (error) => {
-      console.error("An error occurred while loading the model:", error);
-    }
-  );
+const Tree_links = [
+  "/GLB_Models/tree_1.glb",
+  "/GLB_Models/tree_2.glb",
+];
+
+function loadTreeModel(Tree_links) {  
+  return new Promise((resolve, reject) => {  
+    if (Tree_links.length === 0) {  
+      console.log('Không tìm thấy mô hình');  
+      resolve();  
+      return;  
+    }  
+
+    const promises = Tree_links.map(  
+      (treeLinks) =>  
+        new Promise((resolve) => {  
+          tree_loader.load(  
+            treeLinks,  
+            (gltf) => {  
+              let trees = new THREE.Object3D();  
+              trees.add(gltf.scene);  
+              trees.scale.set(0.7, 0.7, 0.7);  
+              TreeCache.push(trees);  
+
+              // Tạo AnimationMixer nếu mô hình có animation
+              let mixer = new THREE.AnimationMixer(trees);
+              // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
+              gltf.animations.forEach((clip) => {
+                mixer.clipAction(clip).play();
+              });
+
+              resolve();  
+            }, 
+            undefined,  
+            (error) => {  
+              console.error("Lỗi khi tải mô hình:", error);  
+              resolve();  
+            }  
+          );
+        })  
+    );  
+
+    Promise.all(promises).then(() => {  
+      console.log("Tất cả mô hình tree đã được tải:");  
+      TreeCache.forEach((object, index) => {  
+        console.log(`Phần tử tree ${index}: ${object.position.x}`, object);  
+      });  
+      resolve();  
+    });   
+  });  
 }
 
 // Hàm chọn ngẫu nhiên bên trái hoặc phải và mô hình cây
-function getRandomSideAndModel() {
-  const models = ["/GLB_Models/tree_1.glb", "/GLB_Models/tree_2.glb"];
-  const randomModel = models[Math.floor(Math.random() * models.length)];
-  let positionX, positionZ;
-
+async function generateTreeRandom(count) {
   // Vùng cấm (vị trí đường)
   const roadWidth = 10; // Chiều rộng đường (tính từ tâm)
   const roadLength = 1000; // Chiều dài đường
   const roadCenterZ = 0; // Tâm đường theo trục Z
+  
+  for (let i = 0; i < count; i++) {
+    let positionX, positionZ;
 
-  // Đặt cây ở vùng nằm ngoài đường
-  do {
-    positionX = Math.random() * 70 - 50; // Ngẫu nhiên từ -50 đến 50 trên trục X
-    positionZ = Math.random() * 1000 - 250; // Ngẫu nhiên từ -250 đến 250 trên trục Z
-  } while (
-    Math.abs(positionX) < roadWidth / 2 && // Tránh vùng đường trên trục X
-    positionZ > roadCenterZ - roadLength / 2 &&
-    positionZ < roadCenterZ + roadLength / 2
-  ); // Tránh vùng đường trên trục Z
-  return { modelPath: randomModel, positionX, positionZ };
-}
+    do {
+      positionX = Math.random() * 70 - 50; // Ngẫu nhiên 2 bên trên trục X
+      positionZ = Math.random() * roadLength - 500; // Ngẫu nhiên trên trục Z
+    } while (
+      Math.abs(positionX) < roadWidth / 2 && // Tránh vùng đường trên trục X
+      positionZ > roadCenterZ - roadLength / 2 &&
+      positionZ < roadCenterZ + roadLength / 2
+    );
 
-// Tải mô hình xen kẽ ngẫu nhiên
-for (let i = 0; i < 10; i++) {
-  const { modelPath, positionX, positionZ } = getRandomSideAndModel();
-  loadTreeModel(modelPath, positionX, positionZ);
+    let object;
+
+    // Đợi tải xong đối tượng từ cache
+    while (TreeCache.length === 0) {
+      console.log("Đang chờ mô hình tree...");
+      await new Promise((resolve) => setTimeout(resolve, 100)); // Chờ 100ms trước khi kiểm tra lại
+    }
+    object = TreeCache[Math.floor(Math.random() * TreeCache.length)].clone();
+    
+    if (!object) {
+      console.error(`Không thể load mô hình ${type}`);
+      continue;
+    }
+
+    // Đặt vị trí cho đối tượng
+    object.position.set(positionX, 0.2, positionZ);
+
+    // Thêm đối tượng vào scene và mảng
+    scene.add(object);
+  }
 }
 
 // Load obstacles và coins
@@ -171,10 +213,12 @@ function loadObsCoModel(GLB_links, type) {
                 obs.add(gltf.scene);
                 obs.scale.set(0.7, 0.7, 0.7);
                 ObsCache.push(obs);
-
                 // Tạo AnimationMixer nếu mô hình có animation
                 let mixer = new THREE.AnimationMixer(gltf.scene);
-                mixers.push(mixer);
+                // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
+                gltf.animations.forEach((clip) => {
+                  mixer.clipAction(clip).play();
+                });
 
                 resolve(); // Hoàn thành việc tải
               },
@@ -190,7 +234,7 @@ function loadObsCoModel(GLB_links, type) {
       Promise.all(promises).then(() => {
         console.log("Tất cả mô hình obstacle đã được tải:");
         ObsCache.forEach((object, index) => {
-          console.log(`Phần tử ${index}: ${object.position.x}`, object);
+          console.log(`Phần tử obs ${index}: ${object.position.x}`, object);
         });
         resolve();
       });
@@ -215,8 +259,11 @@ function loadObsCoModel(GLB_links, type) {
                 CoinCache.push(co);
 
                 // Tạo AnimationMixer nếu mô hình có animation
-                let mixer = new THREE.AnimationMixer(gltf.scene);
-                mixers.push(mixer);
+                let mixer = new THREE.AnimationMixer(co);
+                // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
+                gltf.animations.forEach((clip) => {
+                  mixer.clipAction(clip).play();
+                });
 
                 resolve(); // Hoàn thành việc tải
               },
@@ -232,7 +279,7 @@ function loadObsCoModel(GLB_links, type) {
       Promise.all(promises).then(() => {
         console.log("Tất cả mô hình coin đã được tải:");
         CoinCache.forEach((object, index) => {
-          console.log(`Phần tử ${index}:`, object);
+          console.log(`Phần tử coin ${index}:`, object);
         });
         resolve();
       });
@@ -274,7 +321,7 @@ async function generateObjects(objectArray, count, minZ, maxZ, type) {
     }
 
     // Đặt vị trí cho đối tượng
-    object.position.set(positionX, 0.3, zPosition);
+    object.position.set(positionX, 0.6, zPosition);
 
     // Thêm đối tượng vào scene và mảng
     scene.add(object);
@@ -282,11 +329,12 @@ async function generateObjects(objectArray, count, minZ, maxZ, type) {
 
     // Đảm bảo chướng ngại vật không chồng lên tiền vàng
     if (type === "obstacle") {
+      const padding = 1.5; 
       const isColliding = coins.some((coin) => {
         const coinBox = new THREE.Box3().setFromObject(coin);
         const obstacleBox = new THREE.Box3().setFromCenterAndSize(
           new THREE.Vector3(positionX, 0, zPosition),
-          new THREE.Vector3(1, 1, 1) // Kích thước mặc định của chướng ngại vật
+          new THREE.Vector3(1 + padding, 1 + padding, 1 + padding) // Kích thước mặc định của chướng ngại vật
         );
         return coinBox.intersectsBox(obstacleBox);
       });
@@ -299,8 +347,10 @@ const coins = [];
 const obstacles = [];
 
 (async () => {
+  await loadTreeModel(Tree_links);
   await loadObsCoModel(GLB_links, "coin");
   await loadObsCoModel(GLB_links, "obstacle");
+  await generateTreeRandom(1500);
   await generateObjects(coins, 30, -485, 485, "coin");
   await generateObjects(obstacles, 100, -485, 485, "obstacle");
 })();
