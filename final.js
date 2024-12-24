@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { Howl } from "howler";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { gsap } from "gsap";
@@ -80,7 +79,6 @@ renderer.shadowMapSoft = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-// const controls = new OrbitControls(camera, renderer.domElement);
 
 const loader = new THREE.TextureLoader();
 const sky_texture = loader.load("texture/sky.jpg");
@@ -136,7 +134,6 @@ const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2; // Nằm ngang
 ground.position.y = -0.03; // Vị trí mặt đất
 ground.receiveShadow = true;
-// ground.renderOrder = 0;
 scene.add(ground);
 
 // Đường đi
@@ -145,7 +142,6 @@ const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
 const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 plane.rotation.x = -Math.PI / 2;
 plane.receiveShadow = true;
-// plane.renderOrder = 1;
 scene.add(plane);
 
 // Vạch kẻ đường
@@ -159,7 +155,6 @@ for (let i = -2.5; i <= 2.5; i += 2.5) {
       const Line = new THREE.Mesh(LineGeometry, LineMaterial);
       Line.rotation.x = -Math.PI / 2;
       Line.position.set(i, 0.03, z - 3);
-      // Line.renderOrder = 2;
       scene.add(Line);
     }
   }
@@ -213,7 +208,6 @@ model_loader.load(
   "GLB_Models/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
   (gltf) => {
     model.add(gltf.scene);
-    // console.log("Model loaded:", model);
     model.position.set(0, 0, 498);
     model.scale.set(0.7, 0.7, 0.7);
     // Lặp qua tất cả các đối tượng trong model
@@ -367,7 +361,7 @@ function getRandomSideAndModel() {
 }
 
 // Tải mô hình xen kẽ ngẫu nhiên
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < 10; i++) {
   const { modelPath, positionX, positionZ } = getRandomSideAndModel();
   loadTreeModel(modelPath, positionX, positionZ);
 }
@@ -377,14 +371,12 @@ const obs_co_loader = new GLTFLoader();
 
 // Đường dẫn đến GLB folders
 const GLB_links = [
-  // "/GLB_Models/car_1.glb",
-  "/GLB_Models/car_2.glb",
-  "/GLB_Models/car_3.glb",
-  "/GLB_Models/car_4.glb",
-  "/GLB_Models/coin.glb",
+  // "/GLB_Models/flying_car_1.glb",
+  // // "/GLB_Models/flying_car_2.glb",
+  // "/GLB_Models/coin.glb",
 ];
 
-function loadObsCoModel(GLB_links, positionX, positionZ, type) {
+function loadObsCoModel(GLB_links, positionX, positionZ, type, count) {
   return new Promise((resolve, reject) => {
     if (type === "obstacle") {
       const filteredLinks = GLB_links.filter((link) =>
@@ -405,7 +397,6 @@ function loadObsCoModel(GLB_links, positionX, positionZ, type) {
           console.log("Obstacle model loaded:", modelPath);
           obs.position.set(positionX, 0, positionZ);
           obs.scale.set(0.7, 0.7, 0.7);
-          obs.rotation.y = -Math.PI / 2;
           scene.add(obs);
 
           // Tạo AnimationMixer nếu mô hình có animation
@@ -489,7 +480,7 @@ async function generateObjects(objectArray, count, minZ, maxZ, type, GLB_links) 
       });
       if (isColliding) continue; // Bỏ qua nếu có va chạm
     }
-    
+
     // Load mô hình GLB cho từng đối tượng
     try {
       const object = await loadObsCoModel(GLB_links, positionX, zPosition, type);
