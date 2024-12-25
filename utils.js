@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {
+  scene,
   gameAttribute,
   playerAttribute,
   model,
@@ -7,6 +8,9 @@ import {
   obstacles,
   camera,
   cameraAttribute,
+  loadObsCoModel,
+  GLB_links,
+  generateObjects,
 } from "./final";
 
 function setShadowsForAllObjects(scene) {
@@ -94,10 +98,10 @@ function restartGame() {
   camera.lookAt(new THREE.Vector3(0, 0.5, 0));
 
   // Tiến hành reset GUI nếu cần
-  if (gui) {
-    gui.destroy();
-    gui = null;
-  }
+  // if (gui) {
+  //   gui.destroy();
+  //   gui = null;
+  // }
   animate();
 }
 
