@@ -24,11 +24,12 @@ import {
 } from "./utils";
 import { plane } from "./world_components/plane";
 import { lines, startLine, finishLine } from "./world_components/lines";
-import { mixer, model, playerAttribute } from "./model/player/player";
+import { model, playerAttribute } from "./model/player/player";
 import { loadReadyTexts } from "./model/text/readyText";
 import { camera, cameraAttribute } from "./game_components/camera";
 import { renderer } from "./game_components/renderer";
 import { scene } from "./game_components/scene";
+import { mixers } from "./game_components/animation";
 
 let gameAttribute = {
   isPlayerReady: false, // Biến lưu điểm số
@@ -112,9 +113,11 @@ function loadTreeModel(Tree_links) {
 
               // Tạo AnimationMixer nếu mô hình có animation
               let mixer = new THREE.AnimationMixer(trees);
+              mixers.push(mixer);
+
               // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
               gltf.animations.forEach((clip) => {
-                mixer.clipAction(clip).play();
+                if (mixer) mixer.clipAction(clip).play();
               });
 
               resolve();  
@@ -215,11 +218,13 @@ function loadObsCoModel(GLB_links, type) {
                 ObsCache.push(obs);
                 // Tạo AnimationMixer nếu mô hình có animation
                 let mixer = new THREE.AnimationMixer(gltf.scene);
+                mixers.push(mixer);
+
                 // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
                 gltf.animations.forEach((clip) => {
                   mixer.clipAction(clip).play();
                 });
-
+                
                 resolve(); // Hoàn thành việc tải
               },
               undefined,
@@ -229,7 +234,7 @@ function loadObsCoModel(GLB_links, type) {
               }
             );
           })
-      );
+        );
 
       Promise.all(promises).then(() => {
         console.log("Tất cả mô hình obstacle đã được tải:");
@@ -259,7 +264,9 @@ function loadObsCoModel(GLB_links, type) {
                 CoinCache.push(co);
 
                 // Tạo AnimationMixer nếu mô hình có animation
-                let mixer = new THREE.AnimationMixer(co);
+                let mixer = new THREE.AnimationMixer(gltf.scene);
+                mixers.push(mixer);
+
                 // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
                 gltf.animations.forEach((clip) => {
                   mixer.clipAction(clip).play();
@@ -350,7 +357,7 @@ const obstacles = [];
   await loadTreeModel(Tree_links);
   await loadObsCoModel(GLB_links, "coin");
   await loadObsCoModel(GLB_links, "obstacle");
-  await generateTreeRandom(1500);
+  await generateTreeRandom(150);
   await generateObjects(coins, 30, -485, 485, "coin");
   await generateObjects(obstacles, 100, -485, 485, "obstacle");
 })();
@@ -391,6 +398,7 @@ document.addEventListener("keyup", (event) => {
   if (event.key === "ArrowUp") keys.up = false;
 });
 
+// Hàm kiểm tra va chạm
 function checkCollision(object1, object2, scaleFactor = 0.7) {
   const box1 = new THREE.Box3().setFromObject(object1);
   const box2 = new THREE.Box3().setFromObject(object2);
@@ -456,10 +464,10 @@ function animate() {
     requestAnimationFrame(animate);
     if (gameAttribute.isGameOver) return; // Dừng game nếu trạng thái là kết thúc
 
-    // Cập nhật mixer, tạo animation cho model (đom đóm đập cánhcánh)
-    if (mixer) {
-      mixer.update(clock.getDelta()); // Cập nhật hoạt hình theo thời gian
-    }
+    // Cập nhật mixer, tạo animation cho model
+    mixers.forEach((mixer) => {
+        mixer.update(clock.getDelta()); // Cập nhật tất cả mixers
+    });
 
     // Nhân vật chạy về phía trước
     if (model.position.z > -495) {
