@@ -399,7 +399,8 @@ document.addEventListener("keydown", (event) => {
   if (event.code === "Space" && gameAttribute.isGameStarted) {
     gameAttribute.isPaused = true; // Tạm dừng game
     console.log("Game Paused");
-    pauseScreen();
+    togglePause();
+    // winScreen();
     pauseSound(soundCache, "sound/bg_music.mp3");
   }
 });
@@ -496,11 +497,57 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-//Màn hình chiến thắng
+//Nút điều chỉnh âm thanh
+document.addEventListener("DOMContentLoaded", () => {
+  // Nút nhạc nền
+  const toggleMusic = document.getElementById("toggleMusic");
+  const musicIcon = document.getElementById("musicIcon");
+  let isMusicPlaying = true;
+
+  toggleMusic.addEventListener("click", () => {
+      if (isMusicPlaying) {
+        musicIcon.classList.remove("bi-file-music-fill");
+        musicIcon.classList.add("bi-file-music");
+          pauseSound(soundCache, "sound/bg_music.mp3");
+          console.log("Turned Off");
+      } else {
+        musicIcon.classList.remove("bi-file-music");
+        musicIcon.classList.add("bi-file-music-fill");
+          resumeSound(soundCache, "sound/bg_music.mp3");
+          console.log("Turned On");
+      }
+      isMusicPlaying = !isMusicPlaying;
+});
+});
+
+  // Nút âm thanh
+  const toggleSound = document.getElementById("toggleSound");
+  const soundIcon = document.getElementById("soundIcon");
+  let isOn = true;
+
+  toggleSound.addEventListener("click", () => {
+      if (isOn) {
+        soundIcon.classList.remove("bi-megaphone-fill");
+        soundIcon.classList.add("bi-megaphone");
+          pauseSound(soundCache, "sound/coin_effect.mp3");
+          pauseSound(soundCache, "sound/die_sound.mp3");
+          pauseSound(soundCache, "sound/jump_effect.mp3");
+          console.log("Turned Off");
+      } else {
+        soundIcon.classList.remove("bi-megaphone");
+        soundIcon.classList.add("bi-megaphone-fill");
+          resumeSound(soundCache, "sound/coin_effect.mp3");
+          resumeSound(soundCache, "sound/die_sound.mp3");
+          resumeSound(soundCache, "sound/jump_effect.mp3");
+          console.log("Turned On");
+      }
+      isOn = !isOn;
+  });
+
+// //Màn hình chiến thắng
 function winScreen(){
-  const winMenu = document.getElementById('winMenu');
-  const finalScoreElement = document.getElementById('finalScore');
-  finalScoreElement.textContent = gameAttribute.score; // Hiển thị điểm khi chiến thắng
+  const winMenu = document.getElementById('winScreen');
+  document.getElementById('winScore').textContent = gameAttribute.score;
   winMenu.classList.remove('hidden'); // Hiển thị menu chiến thắng
 
   // Xử lý sự kiện nút "Play Again" trong màn hình chiến thắng
@@ -570,6 +617,7 @@ function animate() {
     } else {
       console.log("You reached the end of the road!");
       gameAttribute.isGameOver = true; // Dừng game khi đạt cuối đường
+      winScreen();
       return;
     }
 
