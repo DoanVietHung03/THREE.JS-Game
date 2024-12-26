@@ -40,19 +40,14 @@ let gameAttribute = {
   isGameOver: false,
   isCountReady: false,
 };
+
 let soundCache = createAllSounds();
 
 // Các làn (logic)
 const lanes = [-3.75, 0, 3.75]; // Các vị trí x của làn
 let currentLane = 1; // Vị trí làn hiện tại (0: trái, 1: giữa, 2: phải)
 let gui, menuOptions;
-// const scene = new THREE.Scene();
 
-// const renderer = new THREE.WebGLRenderer({ antialias: true });
-// renderer.shadowMap.enabled = true;
-// renderer.shadowMapSoft = true;
-// renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-// renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Bầu trời ban ngày
@@ -108,15 +103,6 @@ function loadTreeModel(Tree_links) {
               trees.add(gltf.scene);
               trees.scale.set(0.7, 0.7, 0.7);
               TreeCache.push(trees);
-
-              // // Tạo AnimationMixer nếu mô hình có animation
-              // let mixer = new THREE.AnimationMixer(trees);
-              // mixers.push(mixer);
-
-              // // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
-              // gltf.animations.forEach((clip) => {
-              //   if (mixer) mixer.clipAction(clip).play();
-              // });
 
               resolve();
             },
@@ -194,16 +180,10 @@ const GLB_links = [
 const ObsCache = [];
 const CoinCache = [];
 
-let anim = [];
 function loadObsCoModel(GLB_links, type) {
   return new Promise((resolve, reject) => {
     if (type === "obstacle") {
-      // const modelPath = GLB_links.filter((link) => link.includes("car"));
-      // console.log(`link ${modelPath}`);
-      const modelPath = [
-        "/GLB_Models/firefly_minecraft.glb",
-        "/GLB_Models/firefly_minecraft.glb",
-      ];
+      const modelPath = GLB_links.filter((link) => link.includes("car"));
       if (modelPath.length === 0) {
         console.log(`Không tìm thấy mô hình cho ${type}.`);
         resolve(); // Trả về rỗng nếu không có mô hình nào
@@ -215,21 +195,13 @@ function loadObsCoModel(GLB_links, type) {
             obs_co_loader.load(
               ObsLink,
               (gltf) => {
-                let obs = new THREE.Object3D();
+                const obs = new THREE.Object3D();
                 obs.add(gltf.scene);
+                obs.animations = gltf.animations; // Đính kèm animations từ gltf
+                // console.log('obs anim:', obs.animations);
                 obs.scale.set(0.7, 0.7, 0.7);
-                ObsCache.push(obs);
-                // Tạo AnimationMixer nếu mô hình có animation
-                // let mixer = new THREE.AnimationMixer(obs);
-
-                // mixers[ObsLink.includes("car_1") ? "car1" : "car2"] = mixer;
-                // // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
-                // gltf.animations.forEach((clip) => {
-                //   mixer.clipAction(clip).play();
-                // });
-
-                anim.push(gltf.animations);
-
+                ObsCache.push(obs.clone());
+                
                 resolve(); // Hoàn thành việc tải
               },
               undefined,
@@ -243,11 +215,10 @@ function loadObsCoModel(GLB_links, type) {
 
       Promise.all(promises).then(() => {
         console.log("Tất cả mô hình obstacle đã được tải:");
-        ObsCache.forEach((obj, index) => {
-          console.log(`Phần tử obs ${index}: ${obj.position.x}`, obj);
+        ObsCache.forEach((object, index) => {
+          console.log(`Phần tử obs ${index}: ${object.position.x}`, object);
         });
 
-        console.log(`mixer obs: ${mixers}`);
         resolve();
       });
     } else if (type === "coin") {
@@ -264,20 +235,11 @@ function loadObsCoModel(GLB_links, type) {
             obs_co_loader.load(
               CoinLink,
               (gltf) => {
-                let co = new THREE.Object3D();
+                const co = new THREE.Object3D();
                 co.add(gltf.scene);
                 co.scale.set(0.02, 0.02, 0.02);
                 co.rotation.x = Math.PI / 2;
                 CoinCache.push(co);
-
-                // Tạo AnimationMixer nếu mô hình có animation
-                // let mixer = new THREE.AnimationMixer(gltf.scene);
-                // mixers.push(mixer);
-
-                // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
-                // gltf.animations.forEach((clip) => {
-                //   mixer.clipAction(clip).play();
-                // });
 
                 resolve(); // Hoàn thành việc tải
               },
@@ -321,15 +283,32 @@ async function generateObjects(objectArray, count, minZ, maxZ, type) {
         await new Promise((resolve) => setTimeout(resolve, 100)); // Chờ 100ms trước khi kiểm tra lại
       }
       let obsRand = Math.floor(Math.random() * ObsCache.length);
-      object = ObsCache[obsRand].clone(); // Clone đối tượng chướng ngại vật
-      console.log(`anim: ${anim.length}`);
-      object.animations = anim[obsRand]; //gltf.animations
+      object = ObsCache[obsRand].clone(true); // Clone đối tượng chướng ngại vật
+      object.animations = ObsCache[obsRand].animations; //gltf.animations
+
+      // Tạo AnimationMixer nếu mô hình có animation
+      console.log('obs clone:', object);
+
+      if (object.animations && object.animations.length > 0) {
+        let mixer = new THREE.AnimationMixer(object);
+
+        mixer.timeScale = obsRand === 0 ? 2 : 0.5;
+        mixers.push(mixer);
+  
+        // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
+        object.animations.forEach((clip) => {
+          mixer.clipAction(clip).play();
+        });
+      } else {
+        console.log('Object clone không có animation');
+      }
     } else if (type === "coin") {
       while (CoinCache.length === 0) {
         console.log("Đang chờ mô hình coin...");
         await new Promise((resolve) => setTimeout(resolve, 100)); // Chờ 100ms trước khi kiểm tra lại
       }
-      object = CoinCache[Math.floor(Math.random() * CoinCache.length)].clone(); // Clone đối tượng tiền vàng
+      let coinRand = Math.floor(Math.random() * CoinCache.length);
+      object = CoinCache[coinRand].clone(true); // Clone đối tượng tiền vàng
     }
 
     if (!object) {
@@ -338,7 +317,7 @@ async function generateObjects(objectArray, count, minZ, maxZ, type) {
     }
 
     // Đặt vị trí cho đối tượng
-    object.position.set(positionX, 0.6, zPosition);
+    object.position.set(positionX, 0.7, zPosition);
 
     // Thêm đối tượng vào scene và mảng
     scene.add(object);
@@ -550,19 +529,11 @@ function animate() {
     requestAnimationFrame(animate);
     if (gameAttribute.isGameOver) return; // Dừng game nếu trạng thái là kết thúc
 
+    const delta = clock.getDelta();
     // Cập nhật mixer, tạo animation cho model
     mixers.forEach((mixer) => {
-      mixer.update(clock.getDelta()); // Cập nhật tất cả mixers
-      console.log(`mixer: ${mixer}`);
+      if (mixer) mixer.update(delta); // Cập nhật tất cả mixers
     });
-
-    // for (let key in mixers) {
-    //   if (mixers.hasOwnProperty(key)) {
-    //     // Kiểm tra xem key có phải là key trực tiếp của đối tượng
-    //     console.log(key, mixers[key]); // key là "player", value là "abc"
-    //     mixers[key].update(clock.getDelta());
-    //   }
-    // }
 
     // Nhân vật chạy về phía trước
     if (model.position.z > -495) {
@@ -644,11 +615,13 @@ function animate() {
         scene.remove(coin);
         coins.splice(index, 1);
         gameAttribute.score += 10;
+
         if(gameAttribute.score >= gameAttribute.highscore){
           gameAttribute.highscore = gameAttribute.score;
         }
         updateScoreDisplay();
         //console.log("Score:", gameAttribute.score);
+        
         playSoundForDuration(soundCache, "sound/coin_effect.mp3");
       }
     });
@@ -659,7 +632,6 @@ function animate() {
         console.log("Game Over!");
         playSoundForDuration(soundCache, "sound/die_sound.mp3", 3000);
         stopSound(soundCache, "sound/bg_music.mp3");
-        //console.log("die sound");
         gameAttribute.isGameOver = true;
         showGameOverMenu();
       }
