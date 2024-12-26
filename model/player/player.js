@@ -38,7 +38,9 @@ model_loader.load(
 
     let mixer = new THREE.AnimationMixer(model);
     mixers.push(mixer);
-
+    // console.log('player anim:', gltf.animations);
+    // console.log('player scene', model);
+    // console.log('player mixer:', mixer);
     // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
     gltf.animations.forEach((clip) => {
       mixer.clipAction(clip).play();
