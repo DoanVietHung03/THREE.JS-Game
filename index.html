@@ -4,6 +4,13 @@
     <meta charset="utf-8" />
     <title>NLTT</title>
     <!-- Liên kết đến tệp CSS -->
+     <!-- Import Google Font -->
+    <link href="https://icons.getbootstrap.com/icons/megaphone-fill/" rel="stylesheet">
+    <link href="https://icons.getbootstrap.com/icons/megaphone/" rel="stylesheet">
+    <link href="https://icons.getbootstrap.com/icons/file-music-fill/" rel="stylesheet">
+    <link href="https://icons.getbootstrap.com/icons/file-music/" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
     <link href="final.css" rel="stylesheet">
     <style>
       body {
@@ -15,6 +22,9 @@
     </style>
   </head>
   <body>
+    <div class="logo-container">
+      <span class="logo">NLTT</span>
+  </div>
       <!-- Container cho Game Over menu -->
       <div id="gameOverMenu" class="hidden">
         <div class="menu">
@@ -38,6 +48,24 @@
           <h3>Game Paused</h3>
           <p>Press Enter to resume</p>
         </div>
+        <div class="buttons">
+          <!-- Nút bật/tắt nhạc nền -->
+          <button id="toggleMusic" class="btn btn-primary">
+            <i id="musicIcon" class="bi bi-file-music-fill"></i>
+          </button>
+          
+          <!-- Nút bật/tắt âm thanh -->
+          <button id="toggleSound" class="btn btn-secondary">
+            <i id="soundIcon" class="bi bi-megaphone-fill"></i>
+          </button>
+        </div>
+   <!--Màn hình chiến thắng-->
+      <div id="winScreen" class="hidden">
+        <h4>Congralution!!!</h4>
+        <span class="winScore">Your Score: </span>
+        <button id="playAgainBtn">Play Again</button>
+        <button id="quitBtn">Link nhận donate</button>
+      </div>
     <script type="module" src="/final.js"></script>
     <script type="text/javascript" src="js/three.js"></script>
   </body>
