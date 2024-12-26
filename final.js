@@ -34,6 +34,7 @@ import { mixers } from "./game_components/animation";
 let gameAttribute = {
   isPlayerReady: false, // Biến lưu điểm số
   score: 0, // Biến lưu trạng thái game
+  highscore: 0, // Biến lưu điểm cao nhất
   isGameStarted: false, // Game đang chạy hay không
   isPaused: false, // Game tạm dừng hay không
   isGameOver: false,
@@ -377,6 +378,7 @@ document.addEventListener("keydown", (event) => {
   if (event.code === "Space" && gameAttribute.isGameStarted) {
     gameAttribute.isPaused = true; // Tạm dừng game
     console.log("Game Paused");
+    pauseScreen();
     pauseSound(soundCache, "sound/bg_music.mp3");
   }
 });
@@ -423,6 +425,79 @@ function movePlayer(moveSpeed) {
 // Vòng lặp render và cập nhật animation
 const clock = new THREE.Clock();
 
+//-------------------UI----------------------
+// Hàm hiển thị menu Game Over
+function showGameOverMenu() {
+  const gameOverMenu = document.getElementById('gameOverMenu');
+  gameOverMenu.classList.remove('hidden'); // Hiển thị menu
+  // Xử lý sự kiện nút "Play Again"
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  playAgainBtn.addEventListener('click', () => {
+    gameOverMenu.classList.add('hidden'); // Ẩn menu
+    restartGame(); // Gọi hàm khởi động lại game
+  });
+
+  // Xử lý sự kiện nút "Quit"
+  const quitBtn = document.getElementById('quitBtn');
+  quitBtn.addEventListener('click', () => {
+    gameOverMenu.classList.add('hidden'); // Ẩn menu
+    restartGame(); // Gọi hàm khởi động lại game
+    console.log('Quit game!');
+  });
+}
+
+// Cập nhật điểm số
+function updateScoreDisplay() {
+  document.getElementById('currentScore').textContent = gameAttribute.score;
+  document.getElementById('highScore').textContent = gameAttribute.highscore;
+}
+
+const pauseScreen = document.getElementById("pause-screen");
+
+let isPaused_screen = false;
+
+// Function to toggle pause screen
+function togglePause() {
+  isPaused_screen = !isPaused_screen;
+  if (isPaused_screen) {
+    pauseScreen.style.visibility = "visible"; // Show pause screen
+  } else {
+    pauseScreen.style.visibility = "hidden"; // Hide pause screen
+  }
+}
+
+// Key listener for pause (Space) and resume (Enter)
+document.addEventListener("keydown", (event) => {
+  if (event.key === " " && !isPaused_screen) { // Space to pause
+    togglePause();
+  } else if (event.key === "Enter" && isPaused_screen) { // Enter to resume
+    togglePause();
+  }
+});
+
+//Màn hình chiến thắng
+function winScreen(){
+  const winMenu = document.getElementById('winMenu');
+  const finalScoreElement = document.getElementById('finalScore');
+  finalScoreElement.textContent = gameAttribute.score; // Hiển thị điểm khi chiến thắng
+  winMenu.classList.remove('hidden'); // Hiển thị menu chiến thắng
+
+  // Xử lý sự kiện nút "Play Again" trong màn hình chiến thắng
+  const playAgainWinBtn = document.getElementById('playAgainWinBtn');
+  playAgainWinBtn.addEventListener('click', () => {
+    winMenu.classList.add('hidden'); // Ẩn menu chiến thắng
+    restartGame(); // Khởi động lại game
+  });
+
+  // Xử lý sự kiện nút "Quit" trong màn hình chiến thắng
+  const quitWinBtn = document.getElementById('quitWinBtn');
+  quitWinBtn.addEventListener('click', () => {
+    winMenu.classList.add('hidden'); // Ẩn menu chiến thắng
+    console.log('Quit game!');
+  });
+}
+
+
 // Animation loop
 function animate() {
   if (!gameAttribute.isGameStarted || gameAttribute.isPaused) {
@@ -432,6 +507,8 @@ function animate() {
     sky_texture.offset.y += 0.000005; // Điều chỉnh tốc độ
     // Nếu game chưa bắt đầu hoặc đang tạm dừng, chỉ render cảnh mà không di chuyển
     camera.position.z = model.position.z + 3;
+    camera.position.x = cameraAttribute.initX;
+    camera.position.y = cameraAttribute.initY;
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
   } else if (!gameAttribute.isPlayerReady) {
@@ -538,6 +615,13 @@ function animate() {
         scene.remove(coin);
         coins.splice(index, 1);
         gameAttribute.score += 10;
+
+        if(gameAttribute.score >= gameAttribute.highscore){
+          gameAttribute.highscore = gameAttribute.score;
+        }
+        updateScoreDisplay();
+        //console.log("Score:", gameAttribute.score);
+        
         playSoundForDuration(soundCache, "sound/coin_effect.mp3");
       }
     });
@@ -549,7 +633,7 @@ function animate() {
         playSoundForDuration(soundCache, "sound/die_sound.mp3", 3000);
         stopSound(soundCache, "sound/bg_music.mp3");
         gameAttribute.isGameOver = true;
-        //showGameOverMenu();
+        showGameOverMenu();
       }
     });
 
@@ -573,4 +657,8 @@ export {
   obstacles,
   camera,
   cameraAttribute,
+  loadObsCoModel,
+  GLB_links,
+  generateObjects,
+  animate,
 };
