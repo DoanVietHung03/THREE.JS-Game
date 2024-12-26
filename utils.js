@@ -96,6 +96,7 @@ function restartGame() {
     cameraAttribute.initZ
   );
   camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+
   // Tiến hành reset GUI nếu cần
   // if (gui) {
   //   gui.destroy();

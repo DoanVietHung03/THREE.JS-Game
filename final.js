@@ -523,26 +523,26 @@ document.addEventListener("DOMContentLoaded", () => {
       isOn = !isOn;
   });
 
-// //Màn hình chiến thắng
-function winScreen(){
-  const winMenu = document.getElementById('winScreen');
-  document.getElementById('winScore').textContent = gameAttribute.score;
-  winMenu.classList.remove('hidden'); // Hiển thị menu chiến thắng
+// // //Màn hình chiến thắng
+// function winScreen(){
+//   const winMenu = document.getElementById('winScreen');
+//   document.getElementById('winScore').textContent = gameAttribute.score;
+//   winMenu.classList.remove('hidden'); // Hiển thị menu chiến thắng
 
-  // Xử lý sự kiện nút "Play Again" trong màn hình chiến thắng
-  const playAgainWinBtn = document.getElementById('playAgainWinBtn');
-  playAgainWinBtn.addEventListener('click', () => {
-    winMenu.classList.add('hidden'); // Ẩn menu chiến thắng
-    restartGame(); // Khởi động lại game
-  });
+//   // Xử lý sự kiện nút "Play Again" trong màn hình chiến thắng
+//   const playAgainWinBtn = document.getElementById('playAgainWinBtn');
+//   playAgainWinBtn.addEventListener('click', () => {
+//     winMenu.classList.add('hidden'); // Ẩn menu chiến thắng
+//     restartGame(); // Khởi động lại game
+//   });
 
-  // Xử lý sự kiện nút "Quit" trong màn hình chiến thắng
-  const quitWinBtn = document.getElementById('quitWinBtn');
-  quitWinBtn.addEventListener('click', () => {
-    winMenu.classList.add('hidden'); // Ẩn menu chiến thắng
-    console.log('Quit game!');
-  });
-}
+//   // Xử lý sự kiện nút "Quit" trong màn hình chiến thắng
+//   const quitWinBtn = document.getElementById('quitWinBtn');
+//   quitWinBtn.addEventListener('click', () => {
+//     winMenu.classList.add('hidden'); // Ẩn menu chiến thắng
+//     console.log('Quit game!');
+//   });
+// }
 
 
 // Animation loop
@@ -588,7 +588,7 @@ function animate() {
     } else {
       console.log("You reached the end of the road!");
       gameAttribute.isGameOver = true; // Dừng game khi đạt cuối đường
-      winScreen();
+      // winScreen();
       return;
     }
 
