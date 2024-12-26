@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { mixers } from "../../game_components/animation";
 
 let playerAttribute = {
   velocity: 0, // Vận tốc ban đầu (0 khi đứng yên)
@@ -13,8 +14,8 @@ let playerAttribute = {
   initZ: 498,
 };
 
-let mixer; // AnimationMixer
-let model = new THREE.Object3D();
+const model = new THREE.Object3D();
+
 const model_loader = new GLTFLoader();
 model_loader.load(
   "GLB_Models/firefly_minecraft.glb", // Đường dẫn đến tệp .glb
@@ -35,7 +36,8 @@ model_loader.load(
       }
     });
 
-    mixer = new THREE.AnimationMixer(model);
+    let mixer = new THREE.AnimationMixer(model);
+    mixers.push(mixer);
 
     // Duyệt qua các hoạt hình trong mô hình (nếu có) và thêm chúng vào mixer
     gltf.animations.forEach((clip) => {
@@ -50,4 +52,4 @@ model_loader.load(
   }
 );
 
-export { mixer, model, playerAttribute };
+export { model, playerAttribute };
