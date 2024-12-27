@@ -4,6 +4,18 @@ body {
   background-color: #f8f9fa;
 }
 
+.logo-container {
+  position: fixed;
+  top: 10px; /* Khoảng cách từ trên xuống */
+  right: 10px; /* Khoảng cách từ phải sang */
+  z-index: 1000; /* Đảm bảo logo luôn nằm trên các phần tử khác */
+}
+
+.logo {
+  width: 300px; /* Điều chỉnh kích thước logo */
+  height: auto;
+}
+
 #gameOverMenu {
   position: fixed;
   top: 0;
